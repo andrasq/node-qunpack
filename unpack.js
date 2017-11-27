@@ -36,16 +36,15 @@ var sizes = { c:1, C:1,   s:2, S:2, n:2,   l:4, L:4, N:4,   q:8, Q:8, J:8,   f:4
 
 function qunpack( format, bytes, offset ) {
     offset = offset > 0 ? offset : 0;
-    var state = { fmt: format, buf: bytes, fi: 0, ofs: offset, v: null };
-    _qunpack(format, state);
-    return state.v;
+    var state = { fmt: format, buf: bytes, fi: 0, ofs: offset, v: null, depth: 0 };
+    return _qunpack(format, state);
 }
 
 // TODO: bounds test? (ie, if doesn't fit)
 // TODO: switch on charcode, not char
-function _qunpack( format, state, isNested ) {
-    var offset = state.ofs;
+function _qunpack( format, state ) {
     var retArray = new Array();
+    state.depth += 1;
 
     var fmt, cnt, ch;
     for ( ; state.fi < format.length; ) {
@@ -55,16 +54,11 @@ function _qunpack( format, state, isNested ) {
         // meta-conversions and two-byte conversion specifiers
         switch (fmt) {
         case '[':
-            state.ofs = offset;
-            _qunpack(format, state, true)
-            retArray.push(state.v);
-            offset = state.ofs;
-            break;
+            retArray.push(_qunpack(format, state)); break;
         case ':':
             break;
         case 'Z':
-            if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }
-            break;
+            if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }; break;
         }
 
         // count: test '9' first, avoid the '0' test for non-numeric chars
@@ -77,43 +71,37 @@ function _qunpack( format, state, isNested ) {
         case 'n': case 'N': case 'J':                   // network byte order unsigned ints
         case 'f': case 'G': case 'd': case 'E':         // float and double
             for (var i=0; i<cnt; i++) {
-                state.ofs = offset;
                 retArray.push(unpackFixed(fmt, state));
-                offset = state.ofs;
             }; break;
 
         case 'a': case 'A': case 'Z':
         case 'H':
-            retArray.push(unpackString(fmt, state.buf, offset, cnt));
-            offset += cnt;
+            retArray.push(unpackString(fmt, state, cnt));
             break;
 
         case 'Z+':
             for (var i=0; i<cnt; i++) {
-                var len = findAsciizLength(state.buf, offset);
-                retArray.push(unpackString('a', state.buf, offset, len));
-                offset += len + 1;
+                retArray.push(unpackString('az', state, findAsciizLength(state)));
             }
             break;
 
-        case 'x': offset += cnt; break;
-        case 'X': offset -= cnt; break;
-        case '@': offset = cnt; break;
+        case 'x': state.ofs += cnt; break;
+        case 'X': state.ofs -= cnt; break;
+        case '@': state.ofs = cnt; break;
 
         case ']':
-            if (isNested) {
-                state.ofs = offset;
-                state.v = retArray;
-                return;
+            if (state.depth > 1) {
+                state.depth -= 1;
+                return retArray;
             }
             break;
         }
     }
 
-    if (isNested) throw new Error("qunpack: unterminated [] subgroup");
+    state.depth -= 1;
+    if (state.depth > 0) throw new Error("qunpack: unterminated [] subgroup");
 
-    state.ofs = offset;
-    state.v = retArray;
+    return retArray;
 }
 
 /*
@@ -160,12 +148,16 @@ function unpackFixed( format, state ) {
 // TODO: avoid depending on Buffer, use decodeUtf8 and read float/double
 var stringWhitespace = [ ' ', '\t', '\n', '\r', '\0' ];
 // var stringWhitespaceRegex = /[ \t\n\r\0]+$/g;
-function unpackString( format, bytes, offset, size ) {
+function unpackString( format, state, size ) {
     var encoding = (format === 'H') ? 'hex' : undefined;
-    var val = bytes.toString(encoding, offset, offset + size);
+    var val = state.buf.toString(encoding, state.ofs, state.ofs += size);
 
     switch (format) {
     case 'a':
+        return val;
+    case 'az':
+        // asciiz string, advance past its terminating NUL
+        state.ofs += 1;
         return val;
     case 'A':
         //if (stringWhitespaceRegex.test(val)) val = val.replace(stringWhitespaceRegex, '');
@@ -190,9 +182,9 @@ function scanInt( string, state ) {
     }
 }
 
-// count the length of the asciiz string starting at offset
+// count the length of the asciiz string starting at the current offset
 // A NUL or the end of the buffer terminate the string.
-function findAsciizLength( buf, offset ) {
-    for (var pos=offset; buf[pos]; pos++) ;
-    return pos - offset;
+function findAsciizLength( state ) {
+    for (var pos=state.ofs; state.buf[pos]; pos++) ;
+    return pos - state.ofs;
 }
