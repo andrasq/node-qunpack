@@ -307,6 +307,13 @@ module.exports = {
             },
         },
 
+        'corner cases': {
+            'should ignore negative offset': function(t) {
+                t.equal(unpack('S', [1,2,3,4], -2), 0x0102);
+                t.done();
+            },
+        },
+
         'errors': {
             'should ignore unrecognized format chars': function(t) {
                 var buf = new Buffer([1,2,3,4,5,6]);
