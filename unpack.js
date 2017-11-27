@@ -33,25 +33,34 @@ function qpack( format, args ) {
 
 function qunpack( format, bytes, offset ) {
     offset = offset > 0 ? offset : 0;
-    var state = { fmt: format, buf: bytes, fi: 0, ofs: offset, v: null, depth: 0 };
+    var state = { fmt: format, buf: bytes, fi: 0, ofs: offset, v: null, depth: 0, hashDepth: 0 };
     return _qunpack(format, state);
 }
 
 // TODO: bounds test? (ie, if doesn't fit)
 // TODO: switch on charcode, not char
+// TODO: gather into a Retval that can be either an array or a hash.
+//       Currently we return an array annotated with enumerable properties.
 function _qunpack( format, state ) {
     var retArray = new Array();
     state.depth += 1;
 
-    var fmt, cnt, ch;
+    var fmt, name, cnt, ch;
     for ( ; state.fi < format.length; ) {
+        // in {#...} hashes the fmt is preceded by name:
+        if (state.hashDepth > 0) name = scanPropertyName(format, state);
+
         // conversion specifier
         fmt = format[state.fi++];
 
         // meta-conversions and two-byte conversion specifiers
         switch (fmt) {
         case '[':
+// TODO: move into switch below, and pass in already extracted cnt
             unpackSubgroup(retArray, state); break;
+        case '{':
+// TODO: move into switch below, and pass in already extracted cnt
+            unpackHash(retArray, state); break;
         case 'Z':
             if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }; break;
         }
@@ -83,15 +92,22 @@ function _qunpack( format, state ) {
         case '@': state.ofs = cnt; break;
 
         case ']':
+        case '}':
             if (state.depth > 1) {
                 state.depth -= 1;
                 return retArray;
             }; break;
         }
+        if (state.hashDepth > 0) {
+            // assign {a:S} as a direct value, but {a:C2} as an array of 2 shorts
+            if (retArray.length === 1) retArray[name] = retArray.pop();
+            else if (retArray.length) { retArray[name] = retArray.slice(0); retArray.length = 0 }
+            // if no value generated for conversion character, do not assign to name
+        }
     }
 
     state.depth -= 1;
-    if (state.depth > 0) throw new Error("qunpack: unterminated [...] subgroup");
+    if (state.depth > 0) throw new Error("qunpack: unterminated [...] or {...} subgroup");
 
     return retArray;
 }
@@ -100,11 +116,29 @@ function unpackSubgroup( retArray, state ) {
     var cnt = getCount(state);
     if (!cnt) throw new Error("qunpack: [#...] count must be non-zero");
 
+    // gather the subgroup as when outside a hash, to not expect field names
+    var saveHashDepth = state.hashDepth;
+    state.hashDepth = false;
+
     var subgroupFormatIndex = state.fi;
     for (var i=0; i<cnt; i++) {
         state.fi = subgroupFormatIndex;
         retArray.push(_qunpack(state.fmt, state));
     }
+    state.hashDepth = saveHashDepth;
+}
+
+function unpackHash( retArray, state ) {
+    var cnt = getCount(state);
+    if (!cnt) throw new Error("qunpack: {#...} count must be non-zero");
+
+    var hashFormatIndex = state.fi;
+    state.hashDepth += 1;
+    for (var i=0; i<cnt; i++) {
+        state.fi = hashFormatIndex;
+        retArray.push(_qunpack(state.fmt, state));
+    }
+    state.hashDepth -= 1;
 }
 
 /*
@@ -189,6 +223,45 @@ function scanInt( string, state ) {
         if (cc >= 0x30 && cc <= 0x39) { ival = ival * 10 + (cc - 0x30); fi++; }
         else { state.fi = fi; return ival; }
     }
+}
+
+// extract the colon-terminated substring starting at state.fi
+function scanPropertyName( format, state ) {
+    var name, cc, hasSlash = false, fi;
+
+    // advance to the start of the name
+    while (state.fi < format.length && format[state.fi] !== '}' && !canStartVarname(format[state.fi])) {
+        if (format[state.fi] === '\\') state.fi++;
+        state.fi++;
+    }
+
+    // find the ':' at the end of name:
+    fi = state.fi;
+    while (fi < format.length) {
+        switch (format[fi++]) {
+        case '}':
+// FIXME: breaks multiple-hashes test
+//            if (fi > state.fi + 1) throwUnterminatedNameError(format, state.fi - 1);
+            return '';
+        case '\\':
+            fi++;
+            hasSlash = true;
+            break;
+        case ':':
+            var str = format.slice(state.fi, fi - 1);
+            if (hasSlash) str = str.replace(/\\:/g, ':').replace(/\\\\/g, '\\');
+            state.fi = fi;
+            return str;
+        }
+    }
+    throwUnterminatedNameError(format, state.fi - 1);
+}
+function throwUnterminatedNameError( format, fi ) {
+    throw new Error("qunpack: unterminated property name starting at " + fi + ": '" + format.slice(fi, fi + 20) + (format.length - fi > 20 ? '...' : "'"));
+}
+function canStartVarname( ch ) {
+    // var names must start with a letter, underscore, or $
+    return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch === '_') || (ch === '$'));
 }
 
 // count the length of the asciiz string starting at the current offset

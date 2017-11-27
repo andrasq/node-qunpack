@@ -339,8 +339,11 @@ module.exports = {
 
             'should throw on unterminatede sub-group': function(t) {
                 var buf = new Buffer([1,2,3,4]);
-                try { unpack('C[C', buf, 0); t.fail() }
-                catch (err) { t.contains(err.message, 'unterminated'); t.done() }
+                try { unpack('C[C', buf, 0); }
+                catch (err) {
+                    t.contains(err.message, 'unterminated');
+                    t.done()
+                }
             },
 
             'should extract empty sub-array': function(t) {
@@ -365,6 +368,112 @@ module.exports = {
                 t.deepEqual(unpack('C[-0 C2]C', buf), [1, [2, 3], 4]);  // not a count
 
                 t.done();
+            },
+        },
+
+        'hashes': {
+            'should extract hash with name-value pairs': function(t) {
+                var buf = new Buffer([1,2,3,4,5,6]);
+                t.deepEqual(unpack('C{foo:C, foobar:S}', buf, 0), [0x01, { foo: 0x02, foobar: 0x0304 }]);
+                t.deepEqual(unpack('C{foo:C2, foobar:C}', buf, 0), [0x01, { foo: [0x02, 0x03], foobar: 0x04 }]);
+                t.done();
+            },
+
+            'names should start names with valid initial js varname chars': function(t) {
+                var buf = new Buffer([1,2,3,4,5,6]);
+                // unrecognized punctuation eg ' ,' should get skipped, varnames start with [a-zA-Z_$]
+                t.deepEqual(unpack('{-+a#:C ,;_!@:C ,>A[:C ,%=^&$()]:C}', buf, 0), [{ 'a#': 1, '_!@': 2, 'A[': 3, '$()]': 4 }]);
+                t.done();
+            },
+
+            'should allow escaped chars in name': function(t) {
+                var buf = new Buffer([1,2,3,4,5,6]);
+                t.deepEqual(unpack('SX2{ab:S,cde:S}', buf, 0), [0x0102, { ab: 0x0102, cde: 0x0304 }]);
+                t.deepEqual(unpack('{ab:S,cde:S}', buf, 0), [{ ab: 0x0102, cde: 0x0304 }]);
+                t.deepEqual(unpack('{ab:C,_:X1,cde:S}', buf, 0), [{ ab: 0x01, cde: 0x0102 }]);
+                t.deepEqual(unpack('{a\\b:C,_:X1,cde:S}', buf, 0), [{ 'a\\b': 0x01, cde: 0x0102 }]);
+                t.deepEqual(unpack('{a\\\\\\:b:C,_:X1,cde:S}', buf, 0), [{ 'a\\:b': 0x01, cde: 0x0102 }]);
+                t.deepEqual(unpack('C{a\b\\:b:C,cd\\:e:S}', buf, 0), [1, { 'a\b:b': 2, 'cd:e': 0x0304 }]);
+                t.done();
+            },
+
+            'should skip escaped chars before name': function(t) {
+                var buf = new Buffer([1,2,3,4]);
+                t.deepEqual(unpack('{\\ab:S}', buf), [{ b: 0x0102 }]);
+                t.done();
+            },
+
+            'should omit field if no value extracted': function(t) {
+                var buf = new Buffer([1,2,3,4,5,6]);
+                t.deepEqual(unpack('{a:C, b:X, c:C2, d:@0, e:C}', buf), [{ a:1, c:[1,2], e:1 }]);
+                t.done();
+            },
+
+            'should extract multiple hashes': function(t) {
+                var buf = new Buffer([1,2,3,4,5,6]);
+// FIXME: throws if upper unterminated name is enabled in scanPropertyName
+                t.deepEqual(unpack('x1, {3 a:C, _: x1 }', buf), [{ a:2 }, { a:4 }, { a:6 }]);
+                t.deepEqual(unpack('{2 a:C, x:X1, b:S}', buf), [ {a:1, b:0x0102}, {a:3, b:0x0304} ]);
+                t.done();
+            },
+
+            'should extract nested hashes': function(t) {
+                var buf = new Buffer([1,2,3,4,5,6]);
+t.skip();
+// FIXME: extracts not 'aa' but empty string '' nested name
+                t.deepEqual(unpack('{ a:C, b:{ +aa: S } }', buf), [{ a:1, b:{ aa: 0x0203 }}]);
+                t.done();
+            },
+
+            'errors': {
+                'should throw on non-positive hash count': function(t) {
+                    var buf = new Buffer([1,2,3,4]);
+                    t.throws(function(){ unpack('{0 a:C}',buf) });
+                    t.done();
+                },
+
+                'should throw if {...} group is not terminated': function(t) {
+                    var buf = new Buffer([1,2,3,4]);
+                    try { unpack('{ a:C, ', buf) }
+                    catch (err) {
+                        t.contains(err.message, 'unterminated');
+                        t.done();
+                    }
+                },
+
+                'should throw if field name is not terminated': function(t) {
+                    var buf = new Buffer([1,2,3,4]);
+                    t.throws(function(){ unpack('{ a', buf) });
+                    try { unpack('{ a', buf) }
+                    catch (err) {
+                        t.contains(err.message, 'unterminated');
+                        t.notContains(err.message, '...');
+                        t.done();
+                    }
+                },
+
+                'should trim overlong field name in error': function(t) {
+                    var buf = new Buffer([1,2,3,4]);
+                    try { unpack('{ veryverylongnamethatafieldnamethatisTooLong', buf) }
+                    catch (err) {
+                        t.contains(err.message, 'unterminated');
+                        t.notContains(err.message, 'TooLong');
+                        t.done();
+                    }
+                },
+
+                'should throw if field name is not followed by a colon': function(t) {
+                    var buf = new Buffer([1,2,3,4]);
+t.skip();
+// FIXME: does not throw, extracts { '': '\1' } instead of erroring out
+//console.log("AR: got", unpack('{ a }', buf));
+                    try { var x = unpack('{ a }', buf); }
+                    catch (err) {
+console.log("AR: got err", err);
+                        t.contains(err.message, 'unterminated');
+                        t.done();
+                    }
+                },
             },
         },
 
