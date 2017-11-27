@@ -28,16 +28,16 @@ Formats
 -------
 
 The format string is a concatenated list of conversion specifiers, like for PERL
-`unpack`.  Each conversion specifier is a format letter optionally followed by a
-count.
+`unpack`.  Each conversion specifier is a format letter followed by an optional
+count (default `1`).
 
 The conversion count is interpreted as:
 
-    <[aAHZ]><length> - a `length` byte string (default 1 byte)
+    [aAHZ]<length> - a `length` byte string (default 1 byte)
     <CONV><count> - `count` instances of the type specified by CONV
-    <[x]><count> - skip ahead `count` bytes
-    <[X]><count> - back up `count` bytes
-    <[@]><offset> - seek to absolute position `offset`
+    x<count> - skip ahead `count` bytes
+    X<count> - back up `count` bytes
+    @<offset> - seek to absolute position `offset`
 
 Supported conversion specifiers:
 
@@ -47,18 +47,22 @@ Supported conversion specifiers:
     H - hex string, high nybble first
 
     c,C - signed, unsigned 8-bit char
-    s,S - signed, unsigned 16-bit short (word)
-    l,L - signed, unsigned 32-bit long (dword)
-    q,Q - signed, unsigned 64-bit long long (quadword)
+    s,S,n - signed, unsigned, unsigned 16-bit short (word)
+    l,L,N - signed, unsigned, unsigned 32-bit long (dword)
+    q,Q,J - signed, unsigned, unsigned 64-bit long long (quadword)
 
-    G,E - 32-bit, 64-bit float / double
+    f,G - 32-bit float (note: php spec says "native" size)
+    d,E - 64-bit double (note: php spec says "native" size)
 
     x - skip a byte (NUL-fill if packing)
     X - back up a byte
     @ - seek to absolute offset (NUL-fill if packing)
 
-    G - 32-bit big-endian `float` (note: php specs native size)
-    E - 64-bit big-endian `double` (note: php specs native size)
+Not supported conversion specifiers (for completeness):
+
+    h - hex string, low nybble first
+    v, i, I, V, P, g, e - little-endian numbers
+    * - "all remaining" repetition specifier
 
 Possible extensions:
 
