@@ -31,9 +31,6 @@ function qpack( format, args ) {
 //function qpackInto( format, buf, offset, argv ) {
 //}
 
-// sizes for supported fixed-size conversions
-var sizes = { c:1, C:1,   s:2, S:2, n:2,   l:4, L:4, N:4,   q:8, Q:8, J:8,   f:4, G:4,   d:8, E:8 }
-
 function qunpack( format, bytes, offset ) {
     offset = offset > 0 ? offset : 0;
     var state = { fmt: format, buf: bytes, fi: 0, ofs: offset, v: null, depth: 0 };
@@ -88,8 +85,7 @@ function _qunpack( format, state ) {
         case 'Z+':
             for (var i=0; i<cnt; i++) {
                 retArray.push(unpackString('az', state, findAsciizLength(state)));
-            }
-            break;
+            }; break;
 
         case 'x': state.ofs += cnt; break;
         case 'X': state.ofs -= cnt; break;
@@ -99,8 +95,7 @@ function _qunpack( format, state ) {
             if (state.depth > 1) {
                 state.depth -= 1;
                 return retArray;
-            }
-            break;
+            }; break;
         }
     }
 
