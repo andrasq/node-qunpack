@@ -31,15 +31,15 @@ The format string is a concatenated list of conversion specifiers, like for PERL
 `unpack`.  Each conversion specifier is a format letter optionally followed by a
 count.
 
-TBD.  Tentatively:
+The conversion count is interpreted as:
 
     <[aAHZ]><length> - a `length` byte string (default 1 byte)
-    <CONV><count> - `count` instances of the value specified by CONV
-    <[x]><counte> - skip ahead `count` bytes (NUL fill if packing)
+    <CONV><count> - `count` instances of the type specified by CONV
+    <[x]><count> - skip ahead `count` bytes
     <[X]><count> - back up `count` bytes
-    <[@]><offset> - seek to absolute position `offset` (NUL fill if packing)
+    <[@]><offset> - seek to absolute position `offset`
 
-Conversion specifiers:
+Supported conversion specifiers:
 
     a - NUL-padded string, retains NUL padding
     A - SPACE-padded string, trailing whitespace stripped
@@ -55,7 +55,7 @@ Conversion specifiers:
 
     x - skip a byte (NUL-fill if packing)
     X - back up a byte
-    @ - seek to absolute offset
+    @ - seek to absolute offset (NUL-fill if packing)
 
     G - 32-bit big-endian `float` (note: php specs native size)
     E - 64-bit big-endian `double` (note: php specs native size)
@@ -63,15 +63,16 @@ Conversion specifiers:
 Possible extensions:
 
     T - extract a variable-length NUL-terminated string
-    [<format>] - subgroup, extract into a sub-array
-    {<objformat>} - subgroup, extract into an object.  Format idea: typed names, eg
+    [ <format> ] - subgroup, extract into a sub-array
+    { <objformat> } - subgroup, extract into an object.  Format idea: typed names, eg
       "{A4:prop1,L:prop2,S4:prop3}" => eg { prop1: 'abcd', prop2: 1234, prop3: [1,2,3,4] }
 
 Examples:
 
     "a5" - extract a 5-byte NUL-padded string, eg "ABC\0\0" -> "ABC\0\0"
     "A5" - extract a 5-byte SPACE-padded string, eg "ABC  " => "ABC"
-    "S2" - extract two unsigned shorts, eg "\1\2\3\4" => 0x0102, 0x0304
+    "S2" - extract two unsigned shorts, eg "\1\2\3\4" => [ 0x0102, 0x0304 ]
+
 
 Differences
 -----------
