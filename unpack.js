@@ -41,6 +41,8 @@ function qunpack( format, bytes, offset ) {
 // TODO: switch on charcode, not char
 // TODO: gather into a Retval that can be either an array or a hash.
 //       Currently we return an array annotated with enumerable properties.
+// TODO: split into one-item extractor (updating state) and subgroup/hash unpack loops.
+//       Note that the main unpack is a subgroup loop without a closing ']'.
 function _qunpack( format, state ) {
     var retArray = new Array();
     state.depth += 1;
@@ -53,17 +55,8 @@ function _qunpack( format, state ) {
         // conversion specifier
         fmt = format[state.fi++];
 
-        // meta-conversions and two-byte conversion specifiers
-        switch (fmt) {
-        case '[':
-// TODO: move into switch below, and pass in already extracted cnt
-            unpackSubgroup(retArray, state); break;
-        case '{':
-// TODO: move into switch below, and pass in already extracted cnt
-            unpackHash(retArray, state); break;
-        case 'Z':
-            if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }; break;
-        }
+        // two-byte conversion specifiers
+        if (fmt === 'Z') if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ };
 
         cnt = getCount(state);
 
@@ -77,26 +70,25 @@ function _qunpack( format, state ) {
                 retArray.push(unpackFixed(fmt, state));
             }; break;
 
-        case 'a': case 'A': case 'Z':
-        case 'H':
+        case 'a': case 'A': case 'Z':                   // byte-counted strings
+        case 'H':                                       // hex string
             retArray.push(unpackString(fmt, state, cnt));
             break;
-
         case 'Z+':
             for (var i=0; i<cnt; i++) {
                 retArray.push(unpackString('az', state, findAsciizLength(state)));
             }; break;
 
-        case 'x': state.ofs += cnt; break;
-        case 'X': state.ofs -= cnt; break;
-        case '@': state.ofs = cnt; break;
+        case 'x': state.ofs += cnt; break;              // skip ahead
+        case 'X': state.ofs -= cnt; break;              // back up
+        case '@': state.ofs = cnt; break;               // seek to absolute
 
-        case ']':
-        case '}':
-            if (state.depth > 1) {
-                state.depth -= 1;
-                return retArray;
-            }; break;
+        case '[':                                       // [# ... ] sub-array
+            unpackSubgroup(retArray, cnt, state); break;
+        case '{':                                       // {# ... } sub-object
+            unpackHash(retArray, cnt, state); break;
+        case ']': case '}':
+            if (state.depth > 1) { state.depth -= 1; return retArray; }; break;
         }
         if (state.hashDepth > 0) {
             // assign {a:S} as a direct value, but {a:C2} as an array of 2 shorts
@@ -112,8 +104,8 @@ function _qunpack( format, state ) {
     return retArray;
 }
 
-function unpackSubgroup( retArray, state ) {
-    var cnt = getCount(state);
+// separate function to keep the fi rewind clutter out of the main unpack loop
+function unpackSubgroup( retArray, cnt, state ) {
     if (!cnt) throw new Error("qunpack: [#...] count must be non-zero");
 
     // gather the subgroup as when outside a hash, to not expect field names
@@ -128,8 +120,8 @@ function unpackSubgroup( retArray, state ) {
     state.hashDepth = saveHashDepth;
 }
 
-function unpackHash( retArray, state ) {
-    var cnt = getCount(state);
+// separate function to keep the clutter out of the main unpack loop
+function unpackHash( retArray, cnt, state ) {
     if (!cnt) throw new Error("qunpack: {#...} count must be non-zero");
 
     var hashFormatIndex = state.fi;
@@ -230,6 +222,7 @@ function scanPropertyName( format, state ) {
     var name, cc, hasSlash = false, fi;
 
     // advance to the start of the name
+    // The name begins with the first char that can start a js varname, [a-zA-Z_$]
     while (state.fi < format.length && format[state.fi] !== '}' && !canStartVarname(format[state.fi])) {
         if (format[state.fi] === '\\') state.fi++;
         state.fi++;
@@ -240,7 +233,7 @@ function scanPropertyName( format, state ) {
     while (fi < format.length) {
         switch (format[fi++]) {
         case '}':
-// FIXME: breaks multiple-hashes test
+// FIXME: breaks multiple-hashes test 
 //            if (fi > state.fi + 1) throwUnterminatedNameError(format, state.fi - 1);
             return '';
         case '\\':

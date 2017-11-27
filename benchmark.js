@@ -18,15 +18,15 @@ qtimeit.bench({
     // unpack a zoneinfo file header
     'qunpack': function() { x = qunpack.unpack('A4Cx15L6', bytes); },
     'qunpack 2': function() { x = qunpack.unpack('A4Cx15L6', bytes); },
-    // 2.1 m/s node-v6.11.4, 1.6 m/s k/s v8.9.1 (old 31% faster)
+    // 2.2 m/s node-v6.11.4, 1.65 m/s k/s v8.9.1 (old 33% faster)
 
     'qunpack []': function() { x = qunpack.unpack('A4Cx15[L6]', bytes); },
     'qunpack [] 2': function() { x = qunpack.unpack('A4Cx15[L6]', bytes); },
-    // 1.0 m/s 6.11.1, 940 k/s 8.9.1
+    // 1.2 m/s 6.11.1, 1.0 m/s 8.9.1
 
     'qunpack {}': function() { x = qunpack.unpack('{ magic:A4, version:C, _pad:x15, headers:[L6] }', bytes); },
     'qunpack {} 2': function() { x = qunpack.unpack('{ magic:A4, version:C, _pad:x15, headers:[L6] }', bytes); },
-    // 440 k/s 6.11.1, 325 k/s 8.9.1 (old 35% faster)
+    // 490 k/s 6.11.1, 350 k/s 8.9.1 (old 40% faster)
 
     'json obj': function() { x = JSON.parse(jsonObj) },
     'json obj 2': function() { x = JSON.parse(jsonObj) },

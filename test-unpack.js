@@ -412,7 +412,7 @@ module.exports = {
             'should extract multiple hashes': function(t) {
                 var buf = new Buffer([1,2,3,4,5,6]);
 // FIXME: throws if upper unterminated name is enabled in scanPropertyName
-                t.deepEqual(unpack('x1, {3 a:C, _: x1 }', buf), [{ a:2 }, { a:4 }, { a:6 }]);
+                t.deepEqual(unpack('x1, {3 a:C, _:x1 }', buf), [{ a:2 }, { a:4 }, { a:6 }]);
                 t.deepEqual(unpack('{2 a:C, x:X1, b:S}', buf), [ {a:1, b:0x0102}, {a:3, b:0x0304} ]);
                 t.done();
             },
