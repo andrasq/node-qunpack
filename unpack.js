@@ -21,17 +21,22 @@ module.exports = {
 };
 
 
-function qpack( format, vars ) {
+function qpack( format, args ) {
     throw new Error("pack: not implemented.");
+    // allocate a sufficiently large buffer, and pack into it
+    // var endOffset = qpackInto(format, buf, 0, argv);
+    // return buf.slice(0, endOffset);
 }
+
+//function qpackInto( format, buf, offset, argv ) {
+//}
 
 // sizes for supported fixed-size conversions
 var sizes = { c:1, C:1,   s:2, S:2, n:2,   l:4, L:4, N:4,   q:8, Q:8, J:8,   f:4, G:4,   d:8, E:8 }
 
 // TODO: bounds test? (ie, if doesn't fit)
-function qunpack( format, bytes, offset, state ) {
-    offset = offset || 0;
-    state = state || { p: offset, v: null };
+function qunpack( format, bytes, offset ) {
+    offset = offset > 0 ? offset : 0;
     var retArray = new Array();
 
     var fmt, cnt;
@@ -50,12 +55,8 @@ function qunpack( format, bytes, offset, state ) {
             }; break;
 
         case 'a': case 'A': case 'Z':
-            retArray.push(unpackString(fmt, bytes, offset, cnt));
-            offset += cnt;
-            break;
-
         case 'H':
-            retArray.push(bytes.toString('hex', offset, offset + cnt));
+            retArray.push(unpackString(fmt, bytes, offset, cnt));
             offset += cnt;
             break;
 
@@ -146,36 +147,8 @@ function scanInt( string, offset ) {
 }
 
 
-/***
-// not working, off-by-one?
-function decodeAscii( bytes, base, bound ) {
-    var s = '';
-    for (var i=base; i<bound; i++) s += String.fromCharCode(bytes[i]);
-    return s;
-}
-
-// decodeUtf8() lifted from q-utf8
-// recover the utf8 string between base and bound
-// The bytes are expected to be valid utf8, no checking is done.
-// Returns a string.
-// Handles utf16 only (16-bit code points), same as javascript.
-// Note: faster for short strings, slower for long strings
-// Note: generates more gc activity than buf.toString
-//
-function decodeUtf8( buf, base, bound ) {
-    var ch, str = "", code;
-    for (var i=base; i<bound; i++) {
-        ch = buf[i];
-        // 0xxx xxxx
-        if (ch < 0x80) str += String.fromCharCode(ch);
-        // 110x xxxx  10xx xxxx
-        else if (ch < 0xE0) str += String.fromCharCode(((ch & 0x1F) <<  6) + (buf[++i] & 0x3F));
-        // 1110 xxxx  10xx xxxx  10xx xxxx
-        else if (ch < 0xF0) str += String.fromCharCode(((ch & 0x0F) << 12) + ((buf[++i] & 0x3F) << 6) + (buf[++i] & 0x3F));
-    }
-    return str;
-}
-
+/**
+// TODO: write an extention to support variable-length strings.
 // return the NUL-terminated string from buf at offset
 function readStringZ( buf, offset ) {
     for (var end=offset; buf[end]; end++) ;
