@@ -112,6 +112,7 @@ Differences
 Change Log
 ----------
 
+- 0.3.0 - `[ ... ]` sub-group parsing, also much faster due to faster state passing
 - 0.2.0 - `Z+#` countable variable-length asciiz string conversion specifier
 - 0.1.1 - fix c,C count, ignore negative unpack offset
 - 0.1.0 - initial implementation, with unit tests
@@ -128,7 +129,6 @@ Todo
 - omit the wrapping array if unpacking just 1 value and no count specified
   (ie, 'L2' => [0,0], 'L1' => [0], but 'L' => 0.  However, 'A6' => 'string'
   because '6' is the size, not a count.)
-- extend with `[ ... ]` grouping to return sub-arrays
 
 
 Related Work

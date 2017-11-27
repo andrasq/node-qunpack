@@ -34,26 +34,52 @@ function qpack( format, args ) {
 // sizes for supported fixed-size conversions
 var sizes = { c:1, C:1,   s:2, S:2, n:2,   l:4, L:4, N:4,   q:8, Q:8, J:8,   f:4, G:4,   d:8, E:8 }
 
-// TODO: bounds test? (ie, if doesn't fit)
 function qunpack( format, bytes, offset ) {
     offset = offset > 0 ? offset : 0;
+    var state = { fmt: format, fi: 0, ofs: offset, v: null };
+    _qunpack(format, bytes, state);
+    return state.v;
+}
+
+// TODO: bounds test? (ie, if doesn't fit)
+// TODO: switch on charcode, not char
+function _qunpack( format, bytes, state, isNested ) {
+    var offset = state.ofs;
     var retArray = new Array();
 
-    var fmt, modified, cnt;
-    for (var fi = 0; fi < format.length; ) {
-        // TODO: switch on charcode, not char
-        fmt = format[fi++];
-        if (fmt === 'Z' && format[fi] === '+') { fmt = 'Z+'; fi++ }
-        cnt = (format[fi] <= '9' && format[fi] >= '0') ? scanInt(format, fi) : 1;
+    var fmt, cnt, ch;
+    for ( ; state.fi < format.length; ) {
+        // conversion specifier
+        fmt = format[state.fi++];
 
+        // meta-conversions and two-byte conversion specifiers
+        switch (fmt) {
+        case '[':
+            state.ofs = offset;
+            _qunpack(format, bytes, state, true)
+            retArray.push(state.v);
+            offset = state.ofs;
+            break;
+        case ':':
+            break;
+        case 'Z':
+            if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }
+            break;
+        }
+
+        // count: test '9' first, avoid the '0' test for non-numeric chars
+        cnt = ((ch = format[state.fi]) <= '9' && ch >= '0') ? scanInt(format, state) : 1;
+
+        // unpack bytes according to the conversion
         switch (fmt) {
         case 'C': case 'S': case 'L': case 'Q':         // unsigned ints
         case 'c': case 's': case 'l': case 'q':         // signed ints
         case 'n': case 'N': case 'J':                   // network byte order unsigned ints
         case 'f': case 'G': case 'd': case 'E':         // float and double
             for (var i=0; i<cnt; i++) {
-                retArray.push(unpackFixed(fmt, bytes, offset));
-                offset += sizes[fmt];
+                state.ofs = offset;
+                retArray.push(unpackFixed(fmt, bytes, state));
+                offset = state.ofs;
             }; break;
 
         case 'a': case 'A': case 'Z':
@@ -73,10 +99,21 @@ function qunpack( format, bytes, offset ) {
         case 'x': offset += cnt; break;
         case 'X': offset -= cnt; break;
         case '@': offset = cnt; break;
+
+        case ']':
+            if (isNested) {
+                state.ofs = offset;
+                state.v = retArray;
+                return;
+            }
+            break;
         }
     }
 
-    return retArray;
+    if (isNested) throw new Error("qunpack: unterminated [] subgroup");
+
+    state.ofs = offset;
+    state.v = retArray;
 }
 
 /*
@@ -86,32 +123,36 @@ function qunpack( format, bytes, offset ) {
  * - a large negative eg FFFE can be built out of a scaled negative prefix FF * 256
  *   and and a positive additive offset FE, ie (-1 * 256) + 254 = -2.
  */
-function unpackFixed( format, bytes, offset, size ) {
+function unpackFixed( format, bytes, state, size ) {
     var val;
     switch (format) {
     case 'C':
-        return bytes[offset];
+        return bytes[state.ofs++];
     case 'c':
-        return bytes[offset] >= 128 ? -256 + bytes[offset] : bytes[offset];
+        return bytes[state.ofs] >= 128 ? -256 + bytes[state.ofs++] : bytes[state.ofs++];
     case 'S': case 'n':
     case 's':
-        val = (bytes[offset++] << 8) + bytes[offset++];
+        val = (bytes[state.ofs++] << 8) + bytes[state.ofs++];
         if (format === 's' && val >= 0x8000) val -= 0x10000;
         return val;
     case 'L': case 'N':
     case 'l':
-        val = (bytes[offset++] * 0x1000000) + (bytes[offset++] << 16) + (bytes[offset++] << 8) + bytes[offset++];
+        val = (bytes[state.ofs++] * 0x1000000) + (bytes[state.ofs++] << 16) + (bytes[state.ofs++] << 8) + bytes[state.ofs++];
         if (format === 'l' && val >= 0x80000000) val -= 0x100000000;
         return val;
     case 'Q': case 'J':
     case 'q':
         var fmt = format === 'Q' ? 'L' : 'l';
-        val = (unpackFixed(fmt, bytes, offset) * 0x100000000) + unpackFixed('L', bytes, offset + 4);
+        val = (unpackFixed(fmt, bytes, state) * 0x100000000) + unpackFixed('L', bytes, state);
         return val;
     case 'f': case 'G':
-        return bytes.readFloatBE(offset);
+        state.v = bytes.readFloatBE(state.ofs);
+        state.ofs += 4;
+        return state.v;
     case 'd': case 'E':
-        return bytes.readDoubleBE(offset);
+        state.v = bytes.readDoubleBE(state.ofs);
+        state.ofs += 8;
+        return state.v;
     }
 }
 
@@ -138,13 +179,14 @@ function unpackString( format, bytes, offset, size ) {
     }
 }
 
-function scanInt( string, offset ) {
-    var ival = 0, ch, cc;
+// scan in the number in the string starting at position state.fi
+// Stop on non-number or end of string.
+function scanInt( string, state ) {
+    var ival = 0, ch, cc, fi = state.fi;
     while (true) {
-        cc = string.charCodeAt(offset++);
-        // stop on non-number or end of string
-        if (cc >= 0x30 && cc <= 0x39) ival = ival * 10 + (cc - 0x30);
-        else return ival;
+        cc = string.charCodeAt(fi);
+        if (cc >= 0x30 && cc <= 0x39) { ival = ival * 10 + (cc - 0x30); fi++; }
+        else { state.fi = fi; return ival; }
     }
 }
 

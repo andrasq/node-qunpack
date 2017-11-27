@@ -29,6 +29,11 @@ module.exports = {
             t.done();
         },
 
+        'offset should be optional': function(t) {
+            t.deepEqual(unpack('C', [1,2]), [0x01]);
+            t.done();
+        },
+
         'unsigned integers': {
             'C: unsigned 8-bit char': function(t) {
                 var buf = new Buffer([128, 0, 1, 255]);
@@ -319,9 +324,57 @@ module.exports = {
             },
         },
 
+        'sub-arrays': {
+            'should extract sub-array': function(t) {
+                var buf = new Buffer([1,65,0,66,0,4]);
+                t.deepEqual(unpack('C[Z+2]', buf), [1, ['A', 'B']]);
+                t.done();
+            },
+
+            'should ignore extra ]': function(t) {
+                var buf = new Buffer([1,2,3,4]);
+                t.deepEqual(unpack(']C]C]C]C]]', buf), [1, 2, 3, 4]);
+                t.done();
+            },
+
+            'should throw on unterminatede sub-group': function(t) {
+                var buf = new Buffer([1,2,3,4]);
+                try { unpack('C[C', buf, 0); t.fail() }
+                catch (err) { t.contains(err.message, 'unterminated'); t.done() }
+            },
+
+            'should extract empty sub-array': function(t) {
+                var buf = new Buffer([1,2,3,4]);
+                t.deepEqual(unpack('', buf, 0), []);
+                t.deepEqual(unpack('C[]', buf, 0), [1, []]);
+                t.done();
+            },
+
+            'should extract deeper nested sub-array': function(t) {
+                var buf = new Buffer([1,2,3,4]);
+                t.deepEqual(unpack('C[C[C]]', buf, 1), [2, [3, [4]]]);
+                t.done();
+            },
+        },
+
         'corner cases': {
             'should ignore negative offset': function(t) {
                 t.equal(unpack('S', [1,2,3,4], -2), 0x0102);
+                t.done();
+            },
+
+            'should extract zero args': function(t) {
+                t.deepEqual(unpack('', [], 0), []);
+                t.done();
+            },
+
+            'should extract zero sub-args': function(t) {
+                t.deepEqual(unpack('[]', [], 0), [[]]);
+                t.done();
+            },
+
+            'should extract zero deeper sub-args': function(t) {
+                t.deepEqual(unpack('[][[][]]', [], 0), [[], [[], []]]);
                 t.done();
             },
 
