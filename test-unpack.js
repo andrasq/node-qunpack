@@ -355,6 +355,17 @@ module.exports = {
                 t.deepEqual(unpack('C[C[C]]', buf, 1), [2, [3, [4]]]);
                 t.done();
             },
+
+            'should extract a count of sub-arrays': function(t) {
+                var buf = new Buffer([1,2,3,4,5,6,7,8]);
+                t.deepEqual(unpack('C[1 C2]C', buf), [1, [2, 3], 4]);
+                t.deepEqual(unpack('C[3 C2]C', buf), [1, [2, 3], [4, 5], [6, 7], 8]);
+
+                t.throws(function() { unpack('C[0 C2]c', buf) });
+                t.deepEqual(unpack('C[-0 C2]C', buf), [1, [2, 3], 4]);  // not a count
+
+                t.done();
+            },
         },
 
         'corner cases': {

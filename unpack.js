@@ -54,15 +54,21 @@ function _qunpack( format, state ) {
         // meta-conversions and two-byte conversion specifiers
         switch (fmt) {
         case '[':
-            retArray.push(_qunpack(format, state)); break;
+            cnt = getCount(state);
+            if (!cnt) throw new Error("qunpack: [#...] count must be non-zero");
+            var subgroupFormatIndex = state.fi;
+            for (var i=0; i<cnt; i++) {
+                state.fi = subgroupFormatIndex;
+                retArray.push(_qunpack(format, state));
+            }
+            break;
         case ':':
             break;
         case 'Z':
             if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }; break;
         }
 
-        // count: test '9' first, avoid the '0' test for non-numeric chars
-        cnt = ((ch = format[state.fi]) <= '9' && ch >= '0') ? scanInt(format, state) : 1;
+        cnt = getCount(state);
 
         // unpack bytes according to the conversion
         switch (fmt) {
@@ -169,6 +175,12 @@ function unpackString( format, state, size ) {
     case 'H':
         return val;
     }
+}
+
+function getCount( state ) {
+    // test '9' first, avoid the '0' test for non-numeric chars
+    var ch = state.fmt[state.fi];
+    return (ch <= '9' && ch >= '0') ? scanInt(state.fmt, state) : 1;
 }
 
 // scan in the number in the string starting at position state.fi

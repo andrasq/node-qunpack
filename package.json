@@ -1,6 +1,6 @@
 {
   "name": "qunpack",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "unpack binary strings like perl and php",
   "keywords": [ "unpack", "binary", "php", "perl" ],
   "main": "unpack.js",

@@ -76,8 +76,10 @@ The available conversion specifiers are:
 
     Grouping:
 
-    [ ... ] - sub format inside the [ ] will be gathered into a sub-array
-        Eg, 'C[S2]' on [1,2,3,4,5,6] => [ 0x01, [0x0203, 0x0405] ]
+    [# ... ] - subformat inside the [ ] will be gathered into a sub-array.
+               The subformat may have a non-zero repeat count, in which case
+               that many sub-arrays will be extracted.
+               Eg, 'C[S2]' on [1,2,3,4,5,6] => [ 0x01, [0x0203, 0x0405] ]
 
     Position control:
 
@@ -114,9 +116,14 @@ Differences
 - the `Z+#` conversion is a `qunpack` extension.  It extracts `count` (default 1)
   variable-length NUL-terminated strings from the input.
 
+- the `[# ... ]` grouping conversion is a `qunpack` extension.  It extracts `count`
+  (default 1) sub-arrays with the format contained between the brackets.
+
+
 Change Log
 ----------
 
+- 0.3.2 - support for `[# ... ]` sub-group count
 - 0.3.1 - speed up by passing a around state object, fewer arguments
 - 0.3.0 - `[ ... ]` sub-group parsing, also much faster due to faster state passing
 - 0.2.0 - `Z+#` countable variable-length asciiz string conversion specifier
