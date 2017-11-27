@@ -33,8 +33,8 @@ The format string is a concatenated list of conversion specifiers, like for PERL
 count (default `1`).
 
 Note that the `pack/unpack` conversions are incomplete, it is not possible to specify
-all four combinations of signed/unsigned/little-e/big-e (endianness can be controlled
-only for unsigneds and only for integers).  I needed signed big-endian support, so
+all four combinations of signed/unsigned + little-e/big-e: endianness can be controlled
+only for unsigneds and only for integers.  I needed signed big-endian support, so
 this implementation interprets "machine byte order" as being big-endian.
 
 The conversion count is interpreted as:
