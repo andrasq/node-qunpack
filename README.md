@@ -17,7 +17,7 @@ Api
 ### qunpack.unpack( format, bytes )
 
 Unpack the `bytes` according to the `format` string.  Bytes can be a `Buffer` or an
-array of numbers.  See below for the format specification.
+array of numbers.  See below for the format specification.  Returns an array of values.
 
 ### qunpack.pack( format, data )
 

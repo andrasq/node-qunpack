@@ -20,15 +20,13 @@ module.exports = {
     unpack: qunpack,
 };
 
-var sizes = { null: 0, 'A1': 1, 'A4': 4, c: 1, C: 1, h: 2, H: 2, l: 4, L: 4, q: 8, Q: 8 };
-
 
 function qpack( format, vars ) {
     throw new Error("pack: not implemented.");
 }
 
-var conversions = [ 'a', 'A', 'S', 'L', 'Q' ];
-var sizes = { a:1, A:1, s:2, S:2, n:2, l:4, L:4, N:4, q:8, Q:8, J:8 };
+// sizes for supported fixed-size conversions
+var sizes = { c:1, C:1,   s:2, S:2, n:2,   l:4, L:4, N:4,   q:8, Q:8, J:8,   f:4, G:4,   d:8, E:8 }
 
 // TODO: bounds test? (ie, if doesn't fit)
 function qunpack( format, bytes, offset, state ) {
@@ -42,8 +40,10 @@ function qunpack( format, bytes, offset, state ) {
         fmt = format[fi++];
         cnt = (format[fi] <= '9' && format[fi] >= '0') ? scanInt(format, fi) : 1;
         switch (fmt) {
-        case 'C': case 'S': case 'L': case 'Q': case 'n': case 'N': case 'J':
-        case 'c': case 's': case 'l': case 'q':
+        case 'C': case 'S': case 'L': case 'Q':         // unsigned ints
+        case 'c': case 's': case 'l': case 'q':         // signed ints
+        case 'n': case 'N': case 'J':                   // network byte order unsigned ints
+        case 'f': case 'G': case 'd': case 'E':         // float and double
             for (var i=0; i<cnt; i++) {
                 retArray.push(unpackFixed(fmt, bytes, offset));
                 offset += sizes[fmt];
@@ -57,15 +57,6 @@ function qunpack( format, bytes, offset, state ) {
         case 'H':
             retArray.push(bytes.toString('hex', offset, offset + cnt));
             offset += cnt;
-            break;
-
-        case 'f': case 'G':
-            retArray.push(bytes.readFloatBE(offset));
-            offset += 4;
-            break;
-        case 'd': case 'E':
-            retArray.push(bytes.readDoubleBE(offset));
-            offset += 8;
             break;
 
         case 'x': offset += cnt; break;
@@ -110,23 +101,33 @@ function unpackFixed( format, bytes, offset, size ) {
         var fmt = format === 'Q' ? 'L' : 'l';
         val = (unpackFixed(fmt, bytes, offset) * 0x100000000) + unpackFixed('L', bytes, offset + 4);
         return val;
+    case 'f': case 'G':
+        return bytes.readFloatBE(offset);
+    case 'd': case 'E':
+        return bytes.readDoubleBE(offset);
     }
 }
 
 // TODO: decode utf8 or ascii/latin1?  Here we do utf8.
 // TODO: avoid depending on Buffer, use decodeUtf8 and read float/double
+var stringWhitespace = [ ' ', '\t', '\n', '\r', '\0' ];
+// var stringWhitespaceRegex = /[ \t\n\r\0]+$/g;
 function unpackString( format, bytes, offset, size ) {
-    var val = bytes.toString(undefined, offset, offset + size);
+    var encoding = (format === 'H') ? 'hex' : undefined;
+    var val = bytes.toString(encoding, offset, offset + size);
+
     switch (format) {
     case 'a':
         return val;
     case 'A':
-        var whitespace = [ ' ', '\t', '\n', '\r', '\0' ];
-        for (var len = val.length; len > 0 && whitespace.indexOf(val[len - 1]) >= 0; len--) ;
+        //if (stringWhitespaceRegex.test(val)) val = val.replace(stringWhitespaceRegex, '');
+        for (var len = val.length; len > 0 && stringWhitespace.indexOf(val[len - 1]) >= 0; len--) ;
         return (len < val.length) ? val.slice(0, len) : val;
     case 'Z':
         for (var len = val.length; len > 0 && val[len - 1] === '\0'; len--) ;
         return (len < val.length) ? val.slice(0, len) : val;
+    case 'H':
+        return val;
     }
 }
 
@@ -138,6 +139,7 @@ function scanInt( string, offset ) {
     var ival = 0, ch, cc;
     while (true) {
         cc = string.charCodeAt(offset++);
+        // stop on non-number or end of string
         if (cc >= 0x30 && cc <= 0x39) ival = ival * 10 + (cc - 0x30);
         else return ival;
     }

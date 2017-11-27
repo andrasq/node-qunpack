@@ -14,8 +14,23 @@ var pack = qunpack.pack;
 
 module.exports = {
     'unpack': {
-        'numbers': {
-            'should unpack unsigned 8-bit char': function(t) {
+        'should return an array': function(t) {
+            t.deepEqual(unpack('S', [1,2], 0), [0x0102]);
+            t.done();
+        },
+
+        'should unpack 0 items': function(t) {
+            t.deepEqual(unpack('S0', [1,2], 0), []);
+            t.done();
+        },
+
+        'should unpack 2 items': function(t) {
+            t.deepEqual(unpack('C2', [1,2], 0), [0x01, 0x02]);
+            t.done();
+        },
+
+        'unsigned integers': {
+            'C: unsigned 8-bit char': function(t) {
                 var buf = new Buffer([128, 0, 1, 255]);
                 t.equal(unpack('C', buf, 0), 128);
                 t.equal(unpack('C', buf, 1), 0);
