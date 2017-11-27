@@ -122,12 +122,13 @@ Todo
 
 - implement `pack`
 - extend with `{ ... }` object extraction:  Format idea: typed names, eg
-    "{A4:prop1,L:prop2,S4:prop3}" => eg { prop1: 'abcd', prop2: 1234, prop3: [1,2,3,4] }
+    `{A4:prop1,L:prop2,S4:prop3}` => `{ prop1: 'abcd', prop2: 1234, prop3: [1,2,3,4] }`.
+    Ideally would accept an optional count, too.
 - make bounds errors fatal, to not slip by undetected
 - omit the wrapping array if unpacking just 1 value and no count specified
   (ie, 'L2' => [0,0], 'L1' => [0], but 'L' => 0.  However, 'A6' => 'string'
   because '6' is the size, not a count.)
-- extend with `( ... )` grouping and return sub-arrays
+- extend with `[ ... ]` grouping to return sub-arrays
 
 
 Related Work
