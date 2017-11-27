@@ -74,6 +74,11 @@ The available conversion specifiers are:
     f,G - 32-bit big-e float (note: php spec says "native" size)
     d,E - 64-bit big-e double (note: php spec says "native" size)
 
+    Grouping:
+
+    [ ... ] - sub format inside the [ ] will be gathered into a sub-array
+        Eg, 'C[S2]' on [1,2,3,4,5,6] => [ 0x01, [0x0203, 0x0405] ]
+
     Position control:
 
     x - skip a byte (NUL-fill if packing)
