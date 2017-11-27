@@ -123,7 +123,7 @@ function _qunpack( format, bytes, state, isNested ) {
  * - a large negative eg FFFE can be built out of a scaled negative prefix FF * 256
  *   and and a positive additive offset FE, ie (-1 * 256) + 254 = -2.
  */
-function unpackFixed( format, bytes, state, size ) {
+function unpackFixed( format, bytes, state ) {
     var val;
     switch (format) {
     case 'C':
