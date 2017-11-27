@@ -51,16 +51,7 @@ function _qunpack( format, state ) {
         // meta-conversions and two-byte conversion specifiers
         switch (fmt) {
         case '[':
-            cnt = getCount(state);
-            if (!cnt) throw new Error("qunpack: [#...] count must be non-zero");
-            var subgroupFormatIndex = state.fi;
-            for (var i=0; i<cnt; i++) {
-                state.fi = subgroupFormatIndex;
-                retArray.push(_qunpack(format, state));
-            }
-            break;
-        case ':':
-            break;
+            unpackSubgroup(retArray, state); break;
         case 'Z':
             if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }; break;
         }
@@ -100,9 +91,20 @@ function _qunpack( format, state ) {
     }
 
     state.depth -= 1;
-    if (state.depth > 0) throw new Error("qunpack: unterminated [] subgroup");
+    if (state.depth > 0) throw new Error("qunpack: unterminated [...] subgroup");
 
     return retArray;
+}
+
+function unpackSubgroup( retArray, state ) {
+    var cnt = getCount(state);
+    if (!cnt) throw new Error("qunpack: [#...] count must be non-zero");
+
+    var subgroupFormatIndex = state.fi;
+    for (var i=0; i<cnt; i++) {
+        state.fi = subgroupFormatIndex;
+        retArray.push(_qunpack(state.fmt, state));
+    }
 }
 
 /*
