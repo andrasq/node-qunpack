@@ -3,9 +3,9 @@ qunpack
 [![Build Status](https://api.travis-ci.org/andrasq/node-qunpack.svg?branch=master)](https://travis-ci.org/andrasq/node-qunpack?branch=master)
 [![Coverage Status](https://codecov.io/github/andrasq/node-qunpack/coverage.svg?branch=master)](https://codecov.io/github/andrasq/node-qunpack?branch=master)
 
-Simplified subset of PERL and PHP [`unpack()`](http://php.net/manual/en/function.unpack.php).
+Javascript-only simplified subset of PERL and PHP [`unpack()`](http://php.net/manual/en/function.unpack.php).
 
-Currently only "native" format values are supported, where "native" is implemented as
+Currently only big-endian and "native" values are supported, and "native" is implemented as
 network byte order (big-endian).  The syntax is more like PERL than PHP; the format string is
 a concatenated series of conversion specifiers without names, ie "SL" for `[ short, long ]`
 and not "Ssval/Llval" for `{ sval: short, lval: long }`.
@@ -88,19 +88,13 @@ Not supported conversion specifiers (for completeness):
     * - "all remaining" repetition specifier
     ( ... ) - grouping specifier
 
-Possible extensions:
-
-    T - extract a variable-length NUL-terminated string
-    [ <format> ] - subgroup, extract into a sub-array
-    { <objformat> } - subgroup, extract into an object.  Format idea: typed names, eg
-      "{A4:prop1,L:prop2,S4:prop3}" => eg { prop1: 'abcd', prop2: 1234, prop3: [1,2,3,4] }
-
 Examples:
 
     "a5" - extract a 5-byte NUL-padded string, eg "ABC\0\0" -> "ABC\0\0"
     "A5" - extract a 5-byte SPACE-padded string, eg "ABC  " => "ABC"
     "S2" - extract two unsigned shorts, eg "\1\2\3\4" => [ 0x0102, 0x0304 ]
-
+    "Z+3L" - extract three variable-length NUL-terminated strings, then a 32-bit long.
+             Eg, '1\0two\0three\0\1\2\3\4' => [ '1', 'two', 'three', 0x01020304 ].
 
 Differences
 -----------
@@ -127,11 +121,14 @@ Todo
 ----
 
 - implement `pack`
-- extend with `{ ... }` object extraction
+- extend with `{ ... }` object extraction:  Format idea: typed names, eg
+    "{A4:prop1,L:prop2,S4:prop3}" => eg { prop1: 'abcd', prop2: 1234, prop3: [1,2,3,4] }
 - make bounds errors fatal, to not slip by undetected
 - omit the wrapping array if unpacking just 1 value and no count specified
   (ie, 'L2' => [0,0], 'L1' => [0], but 'L' => 0.  However, 'A6' => 'string'
   because '6' is the size, not a count.)
+- extend with `( ... )` grouping and return sub-arrays
+
 
 Related Work
 ------------
