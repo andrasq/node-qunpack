@@ -112,6 +112,7 @@ Differences
 Change Log
 ----------
 
+- 0.3.1 - speed up by passing a around state object, fewer arguments
 - 0.3.0 - `[ ... ]` sub-group parsing, also much faster due to faster state passing
 - 0.2.0 - `Z+#` countable variable-length asciiz string conversion specifier
 - 0.1.1 - fix c,C count, ignore negative unpack offset
