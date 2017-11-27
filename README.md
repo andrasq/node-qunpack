@@ -102,6 +102,20 @@ Differences
   `S1shortName/L1longName`, returning `{ shortName: <16 bits>, longName: <32 bits> }`.
 
 
+Change Log
+----------
+
+- 0.1.0 - initial implementation, with unit tests
+
+
+Todo
+----
+
+- implement `pack`
+- write `{ ... }` object extractor extension
+- make bounds errors fatal, to not slip by undetected
+
+
 Related Work
 ------------
 
