@@ -272,6 +272,18 @@ module.exports = {
                 t.done();
             },
 
+            'Z+: variable-length NUL-terminated string': function(t) {
+                var buf = new Buffer("ABC\0DE\0F\0\0\0");
+                t.deepEqual(unpack('Z+', buf, 0), ['ABC']);
+                t.deepEqual(unpack('Z+', buf, 1), ['BC']);
+                t.deepEqual(unpack('Z+2', buf, 0), ['ABC','DE']);
+                t.deepEqual(unpack('Z+2', buf, 1), ['BC','DE']);
+                t.deepEqual(unpack('Z+3', buf, 0), ['ABC','DE','F']);
+                t.deepEqual(unpack('Z+4', buf, 0), ['ABC','DE','F','']);
+                t.deepEqual(unpack('Z+5', buf, 0), ['ABC','DE','F','','']);
+                t.done();
+            },
+
             'H: hex string': function(t) {
                 var buf = new Buffer([0x12, 0x34, 0x56, 0x78]);
                 t.equal(unpack('H', buf, 0), '12');
@@ -310,6 +322,16 @@ module.exports = {
         'corner cases': {
             'should ignore negative offset': function(t) {
                 t.equal(unpack('S', [1,2,3,4], -2), 0x0102);
+                t.done();
+            },
+
+            'end of input should terminate final string': function(t) {
+                var buf = new Buffer('abcd');
+                t.equal(unpack('a5', buf, 0), 'abcd');
+                t.equal(unpack('A5', buf, 0), 'abcd');
+                t.equal(unpack('Z5', buf, 0), 'abcd');
+                t.equal(unpack('Z+', buf, 0), 'abcd');
+                t.deepEqual(unpack('Z+2', buf, 0), ['abcd','']);
                 t.done();
             },
         },

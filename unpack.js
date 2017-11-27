@@ -39,11 +39,13 @@ function qunpack( format, bytes, offset ) {
     offset = offset > 0 ? offset : 0;
     var retArray = new Array();
 
-    var fmt, cnt;
+    var fmt, modified, cnt;
     for (var fi = 0; fi < format.length; ) {
         // TODO: switch on charcode, not char
         fmt = format[fi++];
+        if (fmt === 'Z' && format[fi] === '+') { fmt = 'Z+'; fi++ }
         cnt = (format[fi] <= '9' && format[fi] >= '0') ? scanInt(format, fi) : 1;
+
         switch (fmt) {
         case 'C': case 'S': case 'L': case 'Q':         // unsigned ints
         case 'c': case 's': case 'l': case 'q':         // signed ints
@@ -60,13 +62,17 @@ function qunpack( format, bytes, offset ) {
             offset += cnt;
             break;
 
+        case 'Z+':
+            for (var i=0; i<cnt; i++) {
+                var len = findAsciizLength(bytes, offset);
+                retArray.push(unpackString('a', bytes, offset, len));
+                offset += len + 1;
+            }
+            break;
+
         case 'x': offset += cnt; break;
         case 'X': offset -= cnt; break;
         case '@': offset = cnt; break;
-
-        case '0': case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8': case '9':
-            break;
         }
     }
 
@@ -132,10 +138,6 @@ function unpackString( format, bytes, offset, size ) {
     }
 }
 
-// scan*: extract from position
-// state: { v: value, p: position }
-// read*: set state.v, update state.p
-
 function scanInt( string, offset ) {
     var ival = 0, ch, cc;
     while (true) {
@@ -146,12 +148,9 @@ function scanInt( string, offset ) {
     }
 }
 
-
-/**
-// TODO: write an extention to support variable-length strings.
-// return the NUL-terminated string from buf at offset
-function readStringZ( buf, offset ) {
-    for (var end=offset; buf[end]; end++) ;
-    return buf.toString(undefined, offset, end);
+// count the length of the asciiz string starting at offset
+// A NUL or the end of the buffer terminate the string.
+function findAsciizLength( buf, offset ) {
+    for (var pos=offset; buf[pos]; pos++) ;
+    return pos - offset;
 }
-**/

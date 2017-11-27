@@ -45,6 +45,8 @@ The conversion count is interpreted as:
     X<count> - back up `count` bytes
     @<offset> - seek to absolute position `offset`
 
+    Z+<count> - `count` NUL-terminated variable-length strings
+
 The available conversion specifiers are:
 
     Strings, decoded as javascript utf8:
@@ -53,6 +55,8 @@ The available conversion specifiers are:
     A - SPACE-padded string, trailing whitespace stripped
     Z - NUL-padded string, trailing NULs stripped
     H - hex string, high nybble first
+
+    Z+ - NUL-terminated variable-length string, NUL stripped
 
     Numbers, stored in big-endian network byte order:
 
@@ -108,10 +112,14 @@ Differences
   one long, not a short stored into property named 'L1'.  The PHP syntax would be e.g.
   `S1shortName/L1longName`, returning `{ shortName: <16 bits>, longName: <32 bits> }`.
 
+- the `Z+#` conversion is a `qunpack` extension.  It extracts `count` (default 1)
+  variable-length NUL-terminated strings from the input.
 
 Change Log
 ----------
 
+- 0.2.0 - `Z+#` countable variable-length asciiz string conversion specifier
+- 0.1.1 - fix c,C count, ignore negative unpack offset
 - 0.1.0 - initial implementation, with unit tests
 
 
@@ -121,7 +129,6 @@ Todo
 - implement `pack`
 - extend with `{ ... }` object extraction
 - make bounds errors fatal, to not slip by undetected
-- extend with support of variable-length NUL-terminated strings
 - omit the wrapping array if unpacking just 1 value and no count specified
   (ie, 'L2' => [0,0], 'L1' => [0], but 'L' => 0.  However, 'A6' => 'string'
   because '6' is the size, not a count.)
