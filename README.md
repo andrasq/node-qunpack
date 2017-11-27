@@ -78,8 +78,14 @@ The available conversion specifiers are:
 
     [# ... ] - subformat inside the [ ] will be gathered into a sub-array.
                The subformat may have a non-zero repeat count, in which case
-               that many sub-arrays will be extracted.
+               that many sub-arrays will be extracted.  A negative count is
+               ignored.  It is an error for the count to be zero.
                Eg, 'C[S2]' on [1,2,3,4,5,6] => [ 0x01, [0x0203, 0x0405] ]
+
+    {# ... } - extracts # objects with properties determined by the named conversion
+               specifiers contained inside the `{ ... }` (default 1 object).
+               A negative count is ignored.  The count must not be zero.
+               Eg, '{2 a:C, x:X1, b:S}' on [1,2,3,4] => [ {a:1, b:0x0102}, {a:3, b:0304} ]
 
     Position control:
 
@@ -119,10 +125,15 @@ Differences
 - the `[# ... ]` grouping conversion is a `qunpack` extension.  It extracts `count`
   (default 1) sub-arrays with the format contained between the brackets.
 
+- the `{# ... }` grouping conversion is a `qunpack` extension.  It extracts `count`
+  (default 1) objects with properties according to the named formats contained between
+  the braces.
+
 
 Change Log
 ----------
 
+- 0.4.0-dev - initial version of `{# ... }` grouping
 - 0.3.2 - support for `[# ... ]` sub-group count
 - 0.3.1 - speed up by passing a around state object, fewer arguments
 - 0.3.0 - `[ ... ]` sub-group parsing, also much faster due to faster state passing
@@ -135,13 +146,11 @@ Todo
 ----
 
 - implement `pack`
-- extend with `{ ... }` object extraction:  Format idea: typed names, eg
-    `{A4:prop1,L:prop2,S4:prop3}` => `{ prop1: 'abcd', prop2: 1234, prop3: [1,2,3,4] }`.
-    Ideally would accept an optional count, too.
 - make bounds errors fatal, to not slip by undetected
 - omit the wrapping array if unpacking just 1 value and no count specified
   (ie, 'L2' => [0,0], 'L1' => [0], but 'L' => 0.  However, 'A6' => 'string'
   because '6' is the size, not a count.)
+- speed up `{# ... }` extraction (avoid unused array)
 
 
 Related Work
