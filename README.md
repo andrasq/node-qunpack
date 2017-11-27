@@ -47,12 +47,12 @@ Supported conversion specifiers:
     H - hex string, high nybble first
 
     c,C - signed, unsigned 8-bit char
-    s,S,n - signed, unsigned, unsigned 16-bit short (word)
-    l,L,N - signed, unsigned, unsigned 32-bit long (dword)
-    q,Q,J - signed, unsigned, unsigned 64-bit long long (quadword)
+    s,S,n - signed, unsigned, unsigned 16-bit big-e short (word)
+    l,L,N - signed, unsigned, unsigned 32-bit big-e long (longword)
+    q,Q,J - signed, unsigned, unsigned 64-bit big-e long long (quadword)
 
-    f,G - 32-bit float (note: php spec says "native" size)
-    d,E - 64-bit double (note: php spec says "native" size)
+    f,G - 32-bit big-e float (note: php spec says "native" size)
+    d,E - 64-bit big-e double (note: php spec says "native" size)
 
     x - skip a byte (NUL-fill if packing)
     X - back up a byte
