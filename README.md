@@ -14,10 +14,11 @@ and not "Ssval/Llval" for `{ sval: short, lval: long }`.
 Api
 ---
 
-### qunpack.unpack( format, bytes )
+### qunpack.unpack( format, bytes, [offset] )
 
-Unpack the `bytes` according to the `format` string.  Bytes can be a `Buffer` or an
-array of numbers.  See below for the format specification.  Returns an array of values.
+Unpack the Buffer `bytes` according to the `format` string.  See below for the format
+specification.  Returns an array of values.  If an `offset` is given, unpack starting
+that many bytes from the start of `bytes`.
 
 ### qunpack.pack( format, data )
 
@@ -46,10 +47,14 @@ The conversion count is interpreted as:
 
 The available conversion specifiers are:
 
+    Strings, decoded as javascript utf8:
+
     a - NUL-padded string, retains NUL padding
     A - SPACE-padded string, trailing whitespace stripped
     Z - NUL-padded string, trailing NULs stripped
     H - hex string, high nybble first
+
+    Numbers, stored in big-endian network byte order:
 
     c,C - signed, unsigned 8-bit char
     s,S - signed, unsigned 16-bit "native" (big-e) short (word)
@@ -64,6 +69,8 @@ The available conversion specifiers are:
 
     f,G - 32-bit big-e float (note: php spec says "native" size)
     d,E - 64-bit big-e double (note: php spec says "native" size)
+
+    Position control:
 
     x - skip a byte (NUL-fill if packing)
     X - back up a byte
@@ -112,13 +119,16 @@ Todo
 ----
 
 - implement `pack`
-- write `{ ... }` object extractor extension
+- extend with `{ ... }` object extraction
 - make bounds errors fatal, to not slip by undetected
-
+- extend with support of variable-length NUL-terminated strings
+- omit the wrapping array if unpacking just 1 value and no count specified
+  (ie, 'L2' => [0,0], 'L1' => [0], but 'L' => 0.  However, 'A6' => 'string'
+  because '6' is the size, not a count.)
 
 Related Work
 ------------
 
-- [`hipack`](https://npmjs.com/package/hipack) - php compatible pack/unpack
+- [`hipack`](https://npmjs.com/package/hipack) - php compatible pack/unpack, uses C++ extension, needs node sources to install
 - [`php-pack`](https://npmjs.com/package/php-pack) - fork of `hipack`
 - [`qmsgpack`](https://github.com/andrasq/node-q-msgpack) - experimental nodejs `msgpack` with related works bibliography
