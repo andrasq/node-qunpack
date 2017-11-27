@@ -6,7 +6,7 @@ qunpack
 Simplified subset of PERL and PHP [`unpack()`](http://php.net/manual/en/function.unpack.php).
 
 Currently only "native" format values are supported, where "native" is implemented as
-network order (big-endian).  The syntax is more like PERL than PHP; the format string is
+network byte order (big-endian).  The syntax is more like PERL than PHP; the format string is
 a concatenated series of conversion specifiers without names, ie "SL" for `[ short, long ]`
 and not "Ssval/Llval" for `{ sval: short, lval: long }`.
 
@@ -31,6 +31,11 @@ The format string is a concatenated list of conversion specifiers, like for PERL
 `unpack`.  Each conversion specifier is a format letter followed by an optional
 count (default `1`).
 
+Note that the `pack/unpack` conversions are incomplete, it is not possible to specify
+all four combinations of signed/unsigned/little-e/big-e (endianness can be controlled
+only for unsigneds and only for integers).  I needed signed big-endian support, so
+this implementation interprets "machine byte order" as being big-endian.
+
 The conversion count is interpreted as:
 
     [aAHZ]<length> - a `length` byte string (default 1 byte)
@@ -39,7 +44,7 @@ The conversion count is interpreted as:
     X<count> - back up `count` bytes
     @<offset> - seek to absolute position `offset`
 
-Supported conversion specifiers:
+The available conversion specifiers are:
 
     a - NUL-padded string, retains NUL padding
     A - SPACE-padded string, trailing whitespace stripped
@@ -47,9 +52,15 @@ Supported conversion specifiers:
     H - hex string, high nybble first
 
     c,C - signed, unsigned 8-bit char
-    s,S,n - signed, unsigned, unsigned 16-bit big-e short (word)
-    l,L,N - signed, unsigned, unsigned 32-bit big-e long (longword)
-    q,Q,J - signed, unsigned, unsigned 64-bit big-e long long (quadword)
+    s,S - signed, unsigned 16-bit "native" (big-e) short (word)
+    l,L - signed, unsigned 32-bit "native" (big-e) long (longword)
+    q,Q - signed, unsigned 64-bit "native" (big-e) long long (quadword),
+          extracted into a native JavaScript number.  Note that JavaScript
+          numbers are 64-bit doubles and support only 53 bits of precision.
+          Larger values may lose least significant bits.
+    n - unsigned 16-bit big-e short
+    N - unsigned 32-bit big-e long
+    J - unsigned 64-bit big-e long long, with 53 bits of precision
 
     f,G - 32-bit big-e float (note: php spec says "native" size)
     d,E - 64-bit big-e double (note: php spec says "native" size)
@@ -61,8 +72,10 @@ Supported conversion specifiers:
 Not supported conversion specifiers (for completeness):
 
     h - hex string, low nybble first
-    v, i, I, V, P, g, e - little-endian numbers
+    i, I - native-e native-bit signed, unsigned integers
+    v, V, P, g, e - 16-, 32-, 64-bit little-e unsigned integers, little-e float, little-e double
     * - "all remaining" repetition specifier
+    ( ... ) - grouping specifier
 
 Possible extensions:
 
