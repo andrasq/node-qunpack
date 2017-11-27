@@ -36,14 +36,14 @@ var sizes = { c:1, C:1,   s:2, S:2, n:2,   l:4, L:4, N:4,   q:8, Q:8, J:8,   f:4
 
 function qunpack( format, bytes, offset ) {
     offset = offset > 0 ? offset : 0;
-    var state = { fmt: format, fi: 0, ofs: offset, v: null };
-    _qunpack(format, bytes, state);
+    var state = { fmt: format, buf: bytes, fi: 0, ofs: offset, v: null };
+    _qunpack(format, state);
     return state.v;
 }
 
 // TODO: bounds test? (ie, if doesn't fit)
 // TODO: switch on charcode, not char
-function _qunpack( format, bytes, state, isNested ) {
+function _qunpack( format, state, isNested ) {
     var offset = state.ofs;
     var retArray = new Array();
 
@@ -56,7 +56,7 @@ function _qunpack( format, bytes, state, isNested ) {
         switch (fmt) {
         case '[':
             state.ofs = offset;
-            _qunpack(format, bytes, state, true)
+            _qunpack(format, state, true)
             retArray.push(state.v);
             offset = state.ofs;
             break;
@@ -78,20 +78,20 @@ function _qunpack( format, bytes, state, isNested ) {
         case 'f': case 'G': case 'd': case 'E':         // float and double
             for (var i=0; i<cnt; i++) {
                 state.ofs = offset;
-                retArray.push(unpackFixed(fmt, bytes, state));
+                retArray.push(unpackFixed(fmt, state));
                 offset = state.ofs;
             }; break;
 
         case 'a': case 'A': case 'Z':
         case 'H':
-            retArray.push(unpackString(fmt, bytes, offset, cnt));
+            retArray.push(unpackString(fmt, state.buf, offset, cnt));
             offset += cnt;
             break;
 
         case 'Z+':
             for (var i=0; i<cnt; i++) {
-                var len = findAsciizLength(bytes, offset);
-                retArray.push(unpackString('a', bytes, offset, len));
+                var len = findAsciizLength(state.buf, offset);
+                retArray.push(unpackString('a', state.buf, offset, len));
                 offset += len + 1;
             }
             break;
@@ -123,34 +123,34 @@ function _qunpack( format, bytes, state, isNested ) {
  * - a large negative eg FFFE can be built out of a scaled negative prefix FF * 256
  *   and and a positive additive offset FE, ie (-1 * 256) + 254 = -2.
  */
-function unpackFixed( format, bytes, state ) {
+function unpackFixed( format, state ) {
     var val;
     switch (format) {
     case 'C':
-        return bytes[state.ofs++];
+        return state.buf[state.ofs++];
     case 'c':
-        return bytes[state.ofs] >= 128 ? -256 + bytes[state.ofs++] : bytes[state.ofs++];
+        return state.buf[state.ofs] >= 128 ? -256 + state.buf[state.ofs++] : state.buf[state.ofs++];
     case 'S': case 'n':
     case 's':
-        val = (bytes[state.ofs++] << 8) + bytes[state.ofs++];
+        val = (state.buf[state.ofs++] << 8) + state.buf[state.ofs++];
         if (format === 's' && val >= 0x8000) val -= 0x10000;
         return val;
     case 'L': case 'N':
     case 'l':
-        val = (bytes[state.ofs++] * 0x1000000) + (bytes[state.ofs++] << 16) + (bytes[state.ofs++] << 8) + bytes[state.ofs++];
+        val = (state.buf[state.ofs++] * 0x1000000) + (state.buf[state.ofs++] << 16) + (state.buf[state.ofs++] << 8) + state.buf[state.ofs++];
         if (format === 'l' && val >= 0x80000000) val -= 0x100000000;
         return val;
     case 'Q': case 'J':
     case 'q':
         var fmt = format === 'Q' ? 'L' : 'l';
-        val = (unpackFixed(fmt, bytes, state) * 0x100000000) + unpackFixed('L', bytes, state);
+        val = (unpackFixed(fmt, state) * 0x100000000) + unpackFixed('L', state);
         return val;
     case 'f': case 'G':
-        state.v = bytes.readFloatBE(state.ofs);
+        state.v = state.buf.readFloatBE(state.ofs);
         state.ofs += 4;
         return state.v;
     case 'd': case 'E':
-        state.v = bytes.readDoubleBE(state.ofs);
+        state.v = state.buf.readDoubleBE(state.ofs);
         state.ofs += 8;
         return state.v;
     }
