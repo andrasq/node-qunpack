@@ -63,6 +63,7 @@ The available conversion specifiers are:
 
     c,C - signed, unsigned 8-bit char
     s,S - signed, unsigned 16-bit "native" (big-e) short (word)
+    i,I - signed, unsigned "native" int (32-bit big-e)
     l,L - signed, unsigned 32-bit "native" (big-e) long (longword)
     q,Q - signed, unsigned 64-bit "native" (big-e) long long (quadword),
           extracted into a native JavaScript number.  Note that JavaScript
@@ -74,6 +75,15 @@ The available conversion specifiers are:
 
     f,G - 32-bit big-e float (note: php spec says "native" size)
     d,E - 64-bit big-e double (note: php spec says "native" size)
+
+    Little-endian numbers:
+
+    v - unsigned 16-bit little-e short
+    V - unsigned 32-bit little-e long
+    P - unsigned 64-bit little-e long long
+
+    g - 32-bit little-float
+    e - 64-bit littl-e double
 
     Grouping:
 
@@ -96,9 +106,6 @@ The available conversion specifiers are:
 
 Not supported conversion specifiers (for completeness):
 
-    h - hex string, low nybble first
-    i, I - native-e native-bit signed, unsigned integers
-    v, V, P, g, e - 16-, 32-, 64-bit little-e unsigned integers, little-e float, little-e double
     * - "all remaining" repetition specifier
     ( ... ) - grouping specifier
 

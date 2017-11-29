@@ -62,12 +62,18 @@ function _qunpack( format, state ) {
 
         // unpack bytes according to the conversion
         switch (fmt) {
-        case 'C': case 'S': case 'L': case 'Q':         // unsigned ints
-        case 'c': case 's': case 'l': case 'q':         // signed ints
-        case 'n': case 'N': case 'J':                   // network byte order unsigned ints
-        case 'f': case 'G': case 'd': case 'E':         // float and double
+        case 'c': case 's': case 'i': case 'l': case 'q':       // native signed integers
+        case 'C': case 'S': case 'I': case 'L': case 'Q':       // native unsigned integers
+        case 'n': case 'N': case 'J':                           // network order (big-e) unsigned ints
+        case 'f': case 'd': case 'G': case 'E':                 // native and big-e float and double
             for (var i=0; i<cnt; i++) {
                 retArray.push(unpackFixedBE(fmt, state));
+            }; break;
+
+        case 'v': case 'V': case 'P':                           // little-e ints
+        case 'g': case 'e':                                     // little-e float and double
+            for (var i=0; i<cnt; i++) {
+                retArray.push(unpackFixedLE(fmt, state));
             }; break;
 
         case 'a': case 'A': case 'Z':                           // byte-counted strings
@@ -152,7 +158,7 @@ function unpackFixedBE( format, state ) {
     case 's':
         val = (state.buf[state.ofs++] << 8) + state.buf[state.ofs++];
         return (val >= 0x8000 && (format === 's')) ? val - 0x10000 : val;
-    case 'L': case 'N': case 'I':
+    case 'L': case 'I': case 'N':
     case 'l': case 'i':
         val = (state.buf[state.ofs++] * 0x1000000) + (state.buf[state.ofs++] << 16) + (state.buf[state.ofs++] << 8) + (state.buf[state.ofs++]);
         return (val >= 0x80000000 && (format === 'l' || format === 'i')) ? val - 0x100000000 : val;
@@ -164,6 +170,36 @@ function unpackFixedBE( format, state ) {
         return (state.ofs += 4, state.buf.readFloatBE(state.ofs - 4));
     case 'd': case 'E':
         return (state.ofs += 8, state.buf.readDoubleBE(state.ofs - 8));
+    }
+}
+
+/*
+ * extract a fixed-size little-endian value from the bytes
+ * Note that P (little-e quadword) needs a signed little-endian 'l' format,
+ * also implemented here.
+ */
+function unpackFixedLE( format, state ) {
+    switch (format) {
+    case 'C':
+        return state.buf[state.ofs++];
+    case 'c':
+        return state.buf[state.ofs] >= 128 ? -256 + state.buf[state.ofs++] : state.buf[state.ofs++];
+    case 'S': case 'v':
+    case 's':
+        val = (state.buf[state.ofs++]) + (state.buf[state.ofs++] << 8);
+        return (val >= 0x8000 && (format === 's')) ? val - 0x10000 : val;
+    case 'L': case 'I': case 'V':
+    case 'l': case 'i':
+        val = (state.buf[state.ofs++]) + (state.buf[state.ofs++] << 8) + (state.buf[state.ofs++] << 16) + (state.buf[state.ofs++] * 0x1000000);
+        return (val >= 0x80000000 && (format === 'l' || format === 'i')) ? val - 0x100000000 : val;
+    case 'Q': case 'P':
+    case 'q':
+        var fmt = (format === 'q') ? 'i' : 'V';
+        return unpackFixedLE('V', state) + (unpackFixedLE(fmt, state) * 0x100000000);
+    case 'f': case 'G':
+        return (stats.ofs += 4, state.buf.readFloatLE(state.ofs - 4));
+    case 'd': case 'E':
+        return (stats.ofs += 8, state.buf.readDoubleLE(state.ofs - 8));
     }
 }
 
