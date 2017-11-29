@@ -291,10 +291,22 @@ module.exports = {
 
             'H: hex string': function(t) {
                 var buf = new Buffer([0x12, 0x34, 0x56, 0x78]);
-                t.equal(unpack('H', buf, 0), '12');
-                t.equal(unpack('H2', buf, 0), '1234');
-                t.equal(unpack('H2', buf, 1), '3456');
-                t.equal(unpack('H2', buf, 3), '78');
+                t.equal(unpack('H', buf, 0), '1');
+                t.equal(unpack('H2', buf, 0), '12');
+                t.equal(unpack('H2', buf, 1), '34');
+                t.equal(unpack('H3', buf, 2), '567');
+                t.deepEqual(unpack('H3H', buf, 0), ['123', '5']);
+
+                t.done();
+            },
+
+            'h: hex string': function(t) {
+                var buf = new Buffer([0x12, 0x34, 0x56, 0x78]);
+                t.equal(unpack('h', buf, 0), '2');
+                t.equal(unpack('h2', buf, 0), '21');
+                t.equal(unpack('h2', buf, 1), '43');
+                t.equal(unpack('h3', buf, 2), '658');
+                t.deepEqual(unpack('h3h', buf, 0), ['214', '6']);
 
                 t.done();
             }

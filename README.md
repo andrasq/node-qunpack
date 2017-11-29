@@ -54,7 +54,8 @@ The available conversion specifiers are:
     a - NUL-padded string, retains NUL padding
     A - SPACE-padded string, trailing whitespace stripped
     Z - NUL-padded string, trailing NULs stripped
-    H - hex string, high nybble first
+    H - hex string, high nybble first ABC => '414243'
+    h - hex string, low nybble first ABC => '142434'
 
     Z+ - NUL-terminated variable-length string, NUL stripped
 
@@ -133,7 +134,7 @@ Differences
 Change Log
 ----------
 
-- 0.4.0-dev - initial version of `{# ... }` grouping
+- 0.4.0 - initial version of `{# ... }` grouping, fix H conversion, add h conversion
 - 0.3.2 - support for `[# ... ]` sub-group count
 - 0.3.1 - speed up by passing a around state object, fewer arguments
 - 0.3.0 - `[ ... ]` sub-group parsing, also much faster due to faster state passing

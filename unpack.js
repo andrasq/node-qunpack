@@ -67,13 +67,14 @@ function _qunpack( format, state ) {
         case 'n': case 'N': case 'J':                   // network byte order unsigned ints
         case 'f': case 'G': case 'd': case 'E':         // float and double
             for (var i=0; i<cnt; i++) {
-                retArray.push(unpackFixed(fmt, state));
+                retArray.push(unpackFixedBE(fmt, state));
             }; break;
 
-        case 'a': case 'A': case 'Z':                   // byte-counted strings
-        case 'H':                                       // hex string
+        case 'a': case 'A': case 'Z':                           // byte-counted strings
+        case 'H': case 'h':                                     // hex strings
             retArray.push(unpackString(fmt, state, cnt));
             break;
+
         case 'Z+':
             for (var i=0; i<cnt; i++) {
                 retArray.push(unpackString('az', state, findAsciizLength(state)));
@@ -120,7 +121,7 @@ function unpackSubgroup( retArray, cnt, state ) {
     state.hashDepth = saveHashDepth;
 }
 
-// separate function to keep the clutter out of the main unpack loop
+// separate function to keep the fi rewind clutter out of the main unpack loop
 function unpackHash( retArray, cnt, state ) {
     if (!cnt) throw new Error("qunpack: {#...} count must be non-zero");
 
@@ -140,7 +141,7 @@ function unpackHash( retArray, cnt, state ) {
  * - a large negative eg FFFE can be built out of a scaled negative prefix FF * 256
  *   and and a positive additive offset FE, ie (-1 * 256) + 254 = -2.
  */
-function unpackFixed( format, state ) {
+function unpackFixedBE( format, state ) {
     var val;
     switch (format) {
     case 'C':
@@ -150,26 +151,19 @@ function unpackFixed( format, state ) {
     case 'S': case 'n':
     case 's':
         val = (state.buf[state.ofs++] << 8) + state.buf[state.ofs++];
-        if (format === 's' && val >= 0x8000) val -= 0x10000;
-        return val;
-    case 'L': case 'N':
-    case 'l':
-        val = (state.buf[state.ofs++] * 0x1000000) + (state.buf[state.ofs++] << 16) + (state.buf[state.ofs++] << 8) + state.buf[state.ofs++];
-        if (format === 'l' && val >= 0x80000000) val -= 0x100000000;
-        return val;
+        return (val >= 0x8000 && (format === 's')) ? val - 0x10000 : val;
+    case 'L': case 'N': case 'I':
+    case 'l': case 'i':
+        val = (state.buf[state.ofs++] * 0x1000000) + (state.buf[state.ofs++] << 16) + (state.buf[state.ofs++] << 8) + (state.buf[state.ofs++]);
+        return (val >= 0x80000000 && (format === 'l' || format === 'i')) ? val - 0x100000000 : val;
     case 'Q': case 'J':
     case 'q':
         var fmt = format === 'Q' ? 'L' : 'l';
-        val = (unpackFixed(fmt, state) * 0x100000000) + unpackFixed('L', state);
-        return val;
+        return (unpackFixedBE(fmt, state) * 0x100000000) + unpackFixedBE('L', state);
     case 'f': case 'G':
-        state.v = state.buf.readFloatBE(state.ofs);
-        state.ofs += 4;
-        return state.v;
+        return (state.ofs += 4, state.buf.readFloatBE(state.ofs - 4));
     case 'd': case 'E':
-        state.v = state.buf.readDoubleBE(state.ofs);
-        state.ofs += 8;
-        return state.v;
+        return (state.ofs += 8, state.buf.readDoubleBE(state.ofs - 8));
     }
 }
 
@@ -178,8 +172,9 @@ function unpackFixed( format, state ) {
 var stringWhitespace = [ ' ', '\t', '\n', '\r', '\0' ];
 // var stringWhitespaceRegex = /[ \t\n\r\0]+$/g;
 function unpackString( format, state, size ) {
-    var encoding = (format === 'H') ? 'hex' : undefined;
-    var val = state.buf.toString(encoding, state.ofs, state.ofs += size);
+    var val;
+    if (format === 'H' || format === 'h') val = state.buf.toString('hex', state.ofs, state.ofs += (size + 1) >> 1);
+    else val = state.buf.toString(undefined, state.ofs, state.ofs += size);
 
     switch (format) {
     case 'a':
@@ -196,7 +191,13 @@ function unpackString( format, state, size ) {
         for (var len = val.length; len > 0 && val[len - 1] === '\0'; len--) ;
         return (len < val.length) ? val.slice(0, len) : val;
     case 'H':
-        return val;
+        return val.slice(0, size);
+    case 'h':
+        // swap nybbles in each hex byte, but low address bytes still goes first
+        // Hex output consumes the entire last byte, even if not all its bits are converted.
+        var hexbuf = new Buffer(val);
+        for (var t, i=0; i<hexbuf.length; i+=2) { t = hexbuf[i]; hexbuf[i] = hexbuf[i+1]; hexbuf[i+1] = t; }
+        return hexbuf.toString(undefined, 0, size);
     }
 }
 
