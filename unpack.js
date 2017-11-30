@@ -209,7 +209,7 @@ var stringWhitespace = [ ' ', '\t', '\n', '\r', '\0' ];
 // var stringWhitespaceRegex = /[ \t\n\r\0]+$/g;
 function unpackString( format, state, size ) {
     var val;
-    if (format === 'H' || format === 'h') val = state.buf.toString('hex', state.ofs, state.ofs += (size + 1) >> 1);
+    if (format === 'H' || format === 'h') val = state.buf.toString('hex', state.ofs, state.ofs += (size + 1) / 2);
     else val = state.buf.toString(undefined, state.ofs, state.ofs += size);
 
     switch (format) {
