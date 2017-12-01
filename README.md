@@ -3,12 +3,15 @@ qunpack
 [![Build Status](https://api.travis-ci.org/andrasq/node-qunpack.svg?branch=master)](https://travis-ci.org/andrasq/node-qunpack?branch=master)
 [![Coverage Status](https://codecov.io/github/andrasq/node-qunpack/coverage.svg?branch=master)](https://codecov.io/github/andrasq/node-qunpack?branch=master)
 
-Javascript-only simplified subset of PERL and PHP [`unpack()`](http://php.net/manual/en/function.unpack.php).
+Javascript-only mostly compatible subset of PERL (and PHP, somewhat) [`unpack()`](http://php.net/manual/en/function.unpack.php).
 
-Currently only big-endian and "native" values are supported, and "native" is implemented as
+The implementation favors big-endian; "native machine byte order" values are stored in
 network byte order (big-endian).  The syntax is more like PERL than PHP; the format string is
-a concatenated series of conversion specifiers without names, ie "SL" for `[ short, long ]`
-and not "Ssval/Llval" for `{ sval: short, lval: long }`.
+a concatenated series of conversion specifiers without names, ie PERL "SL" for `[ short, long ]`
+and not PHP "S`sval`/L`lval`" for `{ sval: short, lval: long }`.
+
+It is also possible to extract nested and nested hashes with with a `qunpack`-specific
+extensions.
 
 
 Api
@@ -16,9 +19,9 @@ Api
 
 ### qunpack.unpack( format, bytes, [offset] )
 
-Unpack the Buffer `bytes` according to the `format` string.  See below for the format
+Unpack the binary string `bytes` in the Buffer according to the `format` string.  See below for the format
 specification.  Returns an array of values.  If an `offset` is given, unpack starting
-that many bytes from the start of `bytes`.
+that many bytes from the start of the binary string.
 
 ### qunpack.pack( format, data )
 
@@ -57,9 +60,19 @@ The available conversion specifiers are:
     H - hex string, high nybble first ABC => '414243'
     h - hex string, low nybble first ABC => '142434'
 
-    Z+ - NUL-terminated variable-length string, NUL stripped
+    Z+ - extension: NUL-terminated variable-length string, NUL stripped
 
-    Numbers, stored in big-endian network byte order:
+    Portable numeric conversions:
+
+    n - unsigned 16-bit big-e short
+    N - unsigned 32-bit big-e long
+    J - unsigned 64-bit big-e long long, with 53 bits of precision
+
+    v - unsigned 16-bit little-e short
+    V - unsigned 32-bit little-e long
+    P - unsigned 64-bit little-e long long
+
+    Native numbers, stored in big-endian network byte order:
 
     c,C - signed, unsigned 8-bit char
     s,S - signed, unsigned 16-bit "native" (big-e) short (word)
@@ -69,23 +82,14 @@ The available conversion specifiers are:
           extracted into a native JavaScript number.  Note that JavaScript
           numbers are 64-bit doubles and support only 53 bits of precision.
           Larger values may lose least significant bits.
-    n - unsigned 16-bit big-e short
-    N - unsigned 32-bit big-e long
-    J - unsigned 64-bit big-e long long, with 53 bits of precision
 
     f,G - 32-bit big-e float (note: php spec says "native" size)
     d,E - 64-bit big-e double (note: php spec says "native" size)
 
-    Little-endian numbers:
-
-    v - unsigned 16-bit little-e short
-    V - unsigned 32-bit little-e long
-    P - unsigned 64-bit little-e long long
-
     g - 32-bit little-float
     e - 64-bit littl-e double
 
-    Grouping:
+    Grouping extensions:
 
     [# ... ] - subformat inside the [ ] will be gathered into a sub-array.
                The subformat may have a non-zero repeat count, in which case
