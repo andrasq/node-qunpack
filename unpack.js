@@ -214,7 +214,10 @@ var stringWhitespace = [ ' ', '\t', '\n', '\r', '\0' ];
 // var stringWhitespaceRegex = /[ \t\n\r\0]+$/g;
 function unpackString( format, state, size ) {
     var val;
-    if (format === 'H' || format === 'h') val = state.buf.toString('hex', state.ofs, state.ofs += (size + 1) / 2);
+    if (format === 'H' || format === 'h') {
+        // node-v0.10 rejects non-integer base and bound; later node dont mind
+        val = state.buf.toString('hex', state.ofs, state.ofs += Math.floor((size + 1) / 2));
+    }
     else val = state.buf.toString(undefined, state.ofs, state.ofs += size);
 
     switch (format) {
