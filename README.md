@@ -17,16 +17,17 @@ a concatenated series of conversion specifiers without names, like PERL "SL" mea
 `[ short, long ]` and not PHP "S`sname`/L`lname`" for `{ sname: short, lname: long }`.
 
 Full signed little-endian support is now available with eg `s<` extensions.  It is also
-possible to extract nested lists and nested hashes with with a `qunpack`-specific extensions.
+possible to extract nested lists and nested hashes with with `qunpack`-specific extensions.
 
 Example:
 
-    // unpack a signed short, two bytes and two unsigned shorts:
     var bytes = new Buffer([129,2,3,4,5,6,7,8,9,10,11,12]);
+
+    // interpret bytes as a signed short, two bytes and two unsigned shorts:
     var valuesArray = qunpack.unpack('sCCSS', bytes);
     // => [ -32510, 3, 4, 0x0506, 0x0708 ]
 
-    // unpack 6 bytes and a little-endian unsigned long:
+    // interpret as 6 bytes then a little-endian unsigned long:
     var valuesArray = qunpack.unpack('C6V', bytes);
     // => [ 129, 2, 3, 4, 5, 6, 0x0a090807 ]
 
@@ -55,7 +56,8 @@ count (default `1`).
 Note that the `pack/unpack` conversions are incomplete, it is not possible to specify
 all four combinations of signed/unsigned + little-e/big-e: endianness can be controlled
 only for unsigneds and only for integers.  I needed signed big-endian support, so
-this implementation interprets "machine byte order" as being big-endian.
+this implementation interprets "machine byte order" as being big-endian.  I later
+added full little-endian support, some via the `s<`, `l<` and `q<` conversion extensions.
 
 The conversion count is interpreted as:
 
@@ -116,11 +118,13 @@ The available conversion specifiers are:
                that many sub-arrays will be extracted.  A negative count is
                ignored.  It is an error for the count to be zero.
                Eg, 'C[S2]' on [1,2,3,4,5,6] => [ 0x01, [0x0203, 0x0405] ]
+               EXPERIMENTAL.
 
     {# ... } - extracts # objects with properties determined by the named conversion
                specifiers contained inside the `{ ... }` (default 1 object).
                A negative count is ignored.  The count must not be zero.
                Eg, '{2 a:C, x:X1, b:S}' on [1,2,3,4] => [ {a:1, b:0x0102}, {a:3, b:0304} ]
+               EXPERIMENTAL.
 
     Position control:
 
@@ -158,10 +162,11 @@ Differences
 
 - the `[# ... ]` grouping conversion is a `qunpack` extension.  It extracts `count`
   (default 1) sub-arrays with the format contained between the brackets.
+  EXPERIMENTAL.
 
 - the `{# ... }` grouping conversion is a `qunpack` extension.  It extracts `count`
   (default 1) objects with properties according to the named formats contained between
-  the braces.
+  the braces.  EXPERIMENTAL.
 
 - the `s<` etc little-endian conversions are a `qunpack` extension.  The two-character
   format specifiers `s<`, `l<` and `q<` read signed 16-bit, 32-bit and 64-bit integers
@@ -175,7 +180,7 @@ Differences
 Change Log
 ----------
 
-- 0.5.1 - fix node-v0.10 H,h hex conversion (integer base,bound)
+- 0.5.1 - fix node-v0.10 H,h hex conversion (use integer base,bound)
 - 0.5.0 - full little-endian support, fix 'h' and 'H' string length
 - 0.4.0 - initial version of `{# ... }` grouping, fix H conversion, add h conversion
 - 0.3.2 - support for `[# ... ]` sub-group count
@@ -197,6 +202,8 @@ Todo
 - speed up `{# ... }` extraction (avoid unused array)
 - fix nested hash extraction
 - fix multiple-subarray extraction
+- maybe an option for the default storage-endian operating mode
+- maybe `s>`, `l>`, `q>` explicit-endian short, long and quad support
 
 
 Related Work
