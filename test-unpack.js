@@ -66,6 +66,17 @@ module.exports = {
                 t.done();
             },
 
+            'v: unsigned 16-bit little-e short': function(t) {
+                var buf = new Buffer([128, 0, 0, 128]);
+                t.equal(unpack('v', buf, 0), 128);
+                t.equal(unpack('v', buf, 1), 0);
+                t.equal(unpack('v', buf, 2), 0x8000);
+                t.ok(isNaN(unpack('v', buf, 3)));
+                t.deepEqual(unpack('v2', buf, 0), [0x0080, 0x8000]);
+
+                t.done();
+            },
+
             'N,L: unsigned 32-bit long': function(t) {
                 var buf = new Buffer([128, 0, 0, 0, 0, 128, 0, 0]);
                 t.equal(unpack('L', buf, 0), 0x80000000);
@@ -104,6 +115,17 @@ module.exports = {
                 t.equal(unpack('Q', buf, 1), 0xffffffffffffff01);
                 t.equal(unpack('Q', buf, 6), 0xffff010203040506);
                 t.equal(unpack('Q', buf, 8), 0x0102030405060708);
+
+                t.done();
+            },
+
+            'P: unsigned 64-bit little-e quad': function(t) {
+                var buf = new Buffer([128, 0, 0, 0, 0, 0, 0, 0, 0, 128, 1, 2, 3, 4, 0, 0]);
+                t.equal(unpack('P', buf, 0), 128);
+                t.equal(unpack('P', buf, 1), 0);
+                t.equal(unpack('P', buf, 2), 0x8000000000000000);
+                t.ok(isNaN(unpack('P', buf, 10)));
+                t.deepEqual(unpack('P2', buf, 0), [128, 0x0000040302018000]);
 
                 t.done();
             },
@@ -174,27 +196,34 @@ module.exports = {
         },
 
         'floating-point': {
-            'f,G: 4-byte float': function(t) {
+            'f,G: 4-byte float, e: 4-byte little-e float': function(t) {
                 var buf = new Buffer(8);
 
-                buf.writeFloatBE(1234.5, 0);
-                buf.writeFloatBE(5678.5, 4);
-                t.equal(unpack('G', buf, 0), 1234.5);
-                t.deepEqual(unpack('f2', buf, 0), [1234.5, 5678.5]);
-                t.deepEqual(unpack('G2', buf, 0), [1234.5, 5678.5]);
+                var writeMethods = {
+                    'f': 'writeFloatBE',
+                    'G': 'writeFloatBE',
+                    'g': 'writeFloatLE'
+                };
+                for (var fmt in writeMethods) {
+                    var writeFloatXX = writeMethods[fmt];
 
-                buf.writeFloatBE(1234.5, 2);
-                t.equal(unpack('G', buf, 2), 1234.5);
-                t.equal(unpack('f', buf, 2), 1234.5);
+                    buf[writeFloatXX](1234.5, 0);
+                    buf[writeFloatXX](5678.5, 4);
+                    t.equal(unpack(fmt, buf, 0), 1234.5, writeFloatXX + ' ' + fmt);
+                    t.deepEqual(unpack(fmt + '2', buf, 0), [1234.5, 5678.5]);
 
-                var _2e40 = (1<<10)*(1<<10)*(1<<10)*(1<<10);
-                var tests = [
-                    0, -0, 1, -1, 1234.5, -1234.5, _2e40, 1/_2e40, -1*_2e40, -1/_2e40, Infinity, -Infinity, NaN,
-                ];
-                for (var i=0; i<tests.length; i++) {
-                    buf.writeFloatBE(tests[i], 0);
-                    var val = unpack('G', buf, 0);
-                    isNaN(tests[i]) ? t.ok(isNaN(val)) : t.equal(val, tests[i]);
+                    buf[writeFloatXX](1234.5, 2);
+                    t.equal(unpack(fmt, buf, 2), 1234.5);
+
+                    var _2e40 = (1<<10)*(1<<10)*(1<<10)*(1<<10);
+                    var tests = [
+                        0, -0, 1, -1, 1234.5, -1234.5, _2e40, 1/_2e40, -1*_2e40, -1/_2e40, Infinity, -Infinity, NaN,
+                    ];
+                    for (var i=0; i<tests.length; i++) {
+                        buf[writeFloatXX](tests[i], 0);
+                        var val = unpack(fmt, buf, 0);
+                        isNaN(tests[i]) ? t.ok(isNaN(val)) : t.equal(val, tests[i]);
+                    }
                 }
 
                 t.done();
@@ -204,23 +233,30 @@ module.exports = {
                 // TODO: needs more tests...
                 var buf = new Buffer(16);
 
-                buf.writeDoubleBE(1234.5, 0);
-                buf.writeDoubleBE(5678.5, 8);
-                t.equal(unpack('E', buf, 0), 1234.5);
-                t.deepEqual(unpack('E2', buf, 0), [1234.5, 5678.5]);
-                t.deepEqual(unpack('d2', buf, 0), [1234.5, 5678.5]);
+                var writeMethods = {
+                    'd': 'writeDoubleBE',
+                    'E': 'writeDoubleBE',
+                    'e': 'writeDoubleLE',
+                };
+                for (var fmt in writeMethods) {
+                    var writeDoubleXX = writeMethods[fmt];
 
-                buf.writeDoubleBE(1234.5, 2);
-                t.equal(unpack('E', buf, 2), 1234.5);
-                t.equal(unpack('d', buf, 2), 1234.5);
+                    buf[writeDoubleXX](1234.5, 0);
+                    buf[writeDoubleXX](5678.5, 8);
+                    t.equal(unpack(fmt, buf, 0), 1234.5);
+                    t.deepEqual(unpack(fmt + '2', buf, 0), [1234.5, 5678.5]);
 
-                var tests = [
-                    0, -0, 1, -1, 1234.5, -1234.5, 1e10, 1e-10, -1e10, -1e-10, 1e200, 1e-200, Infinity, -Infinity, NaN,
-                ];
-                for (var i=0; i<tests.length; i++) {
-                    buf.writeDoubleBE(tests[i], 0);
-                    var val = unpack('E', buf, 0);
-                    isNaN(tests[i]) ? t.ok(isNaN(val)) : t.equal(val, tests[i]);
+                    buf[writeDoubleXX](1234.5, 2);
+                    t.equal(unpack(fmt, buf, 2), 1234.5);
+
+                    var tests = [
+                        0, -0, 1, -1, 1234.5, -1234.5, 1e10, 1e-10, -1e10, -1e-10, 1e200, 1e-200, Infinity, -Infinity, NaN,
+                    ];
+                    for (var i=0; i<tests.length; i++) {
+                        buf[writeDoubleXX](tests[i], 0);
+                        var val = unpack(fmt, buf, 0);
+                        isNaN(tests[i]) ? t.ok(isNaN(val)) : t.equal(val, tests[i]);
+                    }
                 }
 
                 t.done();

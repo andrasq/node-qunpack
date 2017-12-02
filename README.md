@@ -83,8 +83,9 @@ The available conversion specifiers are:
           numbers are 64-bit doubles and support only 53 bits of precision.
           Larger values may lose least significant bits.
 
-    f,G - 32-bit big-e float (note: php spec says "native" size)
-    d,E - 64-bit big-e double (note: php spec says "native" size)
+    f,d - 32-bit and 64-bit "native" big-e float and double
+    G,E - 32-bit and 64-bit big-e float and double
+    g,e - 32-bit and 64-bit little-e float and double
 
     g - 32-bit little-float
     e - 64-bit littl-e double

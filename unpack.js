@@ -180,26 +180,33 @@ function unpackFixedBE( format, state ) {
  */
 function unpackFixedLE( format, state ) {
     switch (format) {
+/**
     case 'C':
         return state.buf[state.ofs++];
     case 'c':
         return state.buf[state.ofs] >= 128 ? -256 + state.buf[state.ofs++] : state.buf[state.ofs++];
-    case 'S': case 'v':
+**/
+    case 'v':
+    case 'S':
     case 's':
-        val = (state.buf[state.ofs++]) + (state.buf[state.ofs++] << 8);
+        // caution: scale with multiply, not shift, highest-address byte:
+        //          (undefined << 8) == 0, (undefined * 256) == NaN, (undefined + 0) == NaN
+        var val = (state.buf[state.ofs++]) + (state.buf[state.ofs++] * 256);
         return (val >= 0x8000 && (format === 's')) ? val - 0x10000 : val;
-    case 'L': case 'I': case 'V':
+    case 'V':
+    case 'L': case 'I':
     case 'l': case 'i':
         val = (state.buf[state.ofs++]) + (state.buf[state.ofs++] << 8) + (state.buf[state.ofs++] << 16) + (state.buf[state.ofs++] * 0x1000000);
         return (val >= 0x80000000 && (format === 'l' || format === 'i')) ? val - 0x100000000 : val;
-    case 'Q': case 'P':
+    case 'P':
+    case 'Q':
     case 'q':
         var fmt = (format === 'q') ? 'i' : 'V';
         return unpackFixedLE('V', state) + (unpackFixedLE(fmt, state) * 0x100000000);
-    case 'f': case 'G':
-        return (stats.ofs += 4, state.buf.readFloatLE(state.ofs - 4));
-    case 'd': case 'E':
-        return (stats.ofs += 8, state.buf.readDoubleLE(state.ofs - 8));
+    case 'g':
+        return (state.ofs += 4, state.buf.readFloatLE(state.ofs - 4));
+    case 'e':
+        return (state.ofs += 8, state.buf.readDoubleLE(state.ofs - 8));
     }
 }
 
