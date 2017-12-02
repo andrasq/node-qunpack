@@ -10,8 +10,8 @@ network byte order (big-endian).  The syntax is more like PERL than PHP; the for
 a concatenated series of conversion specifiers without names, ie PERL "SL" for `[ short, long ]`
 and not PHP "S`sval`/L`lval`" for `{ sval: short, lval: long }`.
 
-It is also possible to extract nested and nested hashes with with a `qunpack`-specific
-extensions.
+It is also possible to extract nested lists and nested hashes with with a `qunpack`-specific
+extensions.  Full little-endian support is now available with eg `'s<'` extensions.
 
 
 Api
@@ -60,7 +60,7 @@ The available conversion specifiers are:
     H - hex string, high nybble first ABC => '414243'
     h - hex string, low nybble first ABC => '142434'
 
-    Z+ - extension: NUL-terminated variable-length string, NUL stripped
+    Z+ - NUL-terminated variable-length string, NUL stripped (extension)
 
     Portable numeric conversions:
 
@@ -89,6 +89,8 @@ The available conversion specifiers are:
 
     g - 32-bit little-float
     e - 64-bit littl-e double
+
+    c<,s<,l<,q< - signed 8-bit 16-bit, 32-bit and 64-bit little-e integers (extensions)
 
     Grouping extensions:
 
@@ -146,6 +148,7 @@ Differences
 Change Log
 ----------
 
+- 0.5.0 - full little-endian support, fix 'h' and 'H' string length
 - 0.4.0 - initial version of `{# ... }` grouping, fix H conversion, add h conversion
 - 0.3.2 - support for `[# ... ]` sub-group count
 - 0.3.1 - speed up by passing a around state object, fewer arguments
