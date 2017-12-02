@@ -3,15 +3,32 @@ qunpack
 [![Build Status](https://api.travis-ci.org/andrasq/node-qunpack.svg?branch=master)](https://travis-ci.org/andrasq/node-qunpack?branch=master)
 [![Coverage Status](https://codecov.io/github/andrasq/node-qunpack/coverage.svg?branch=master)](https://codecov.io/github/andrasq/node-qunpack?branch=master)
 
-Javascript-only mostly compatible subset of PERL (and PHP, somewhat) [`unpack()`](http://php.net/manual/en/function.unpack.php).
+`Unpack` decodes a binary string into numbers and strings according to the specified format.
+This implementation is a javascript-only mostly compatible work-alike of PERL and PHP
+[`unpack()`](http://php.net/manual/en/function.unpack.php).
 
-The implementation favors big-endian; "native machine byte order" values are stored in
-network byte order (big-endian).  The syntax is more like PERL than PHP; the format string is
-a concatenated series of conversion specifiers without names, ie PERL "SL" for `[ short, long ]`
-and not PHP "S`sval`/L`lval`" for `{ sval: short, lval: long }`.
+`qunpack` favors big-endian storage; I both signed and unsigned big-endian support,
+so I store generic "native" ("machine byte order") values in
+network byte order (big-endian).  Later I added full little-endian support as well,
+but the default is still network byte order.
 
-It is also possible to extract nested lists and nested hashes with with a `qunpack`-specific
-extensions.  Full little-endian support is now available with eg `'s<'` extensions.
+The syntax is more like PERL than PHP; the format string is
+a concatenated series of conversion specifiers without names, like PERL "SL" meaning
+`[ short, long ]` and not PHP "S`sname`/L`lname`" for `{ sname: short, lname: long }`.
+
+Full signed little-endian support is now available with eg `s<` extensions.  It is also
+possible to extract nested lists and nested hashes with with a `qunpack`-specific extensions.
+
+Example:
+
+    // unpack a signed short, two bytes and two unsigned shorts:
+    var bytes = new Buffer([129,2,3,4,5,6,7,8,9,10,11,12]);
+    var valuesArray = qunpack.unpack('sCCSS', bytes);
+    // => [ -32510, 3, 4, 0x0506, 0x0708 ]
+
+    // unpack 6 bytes and a little-endian unsigned long:
+    var valuesArray = qunpack.unpack('C6V', bytes);
+    // => [ 129, 2, 3, 4, 5, 6, 0x0a090807 ]
 
 
 Api
@@ -90,7 +107,7 @@ The available conversion specifiers are:
     g - 32-bit little-float
     e - 64-bit littl-e double
 
-    c<,s<,l<,q< - signed 8-bit 16-bit, 32-bit and 64-bit little-e integers (extensions)
+    s<,l<,q< - signed 16-bit, 32-bit and 64-bit little-e integers (extensions)
 
     Grouping extensions:
 
@@ -127,8 +144,10 @@ Examples:
 Differences
 -----------
 
-- `qunpack` does not try to emulate PHP or PERL `unpack`.  It does borrow some of
-  their syntax, but only implements big-endian values (network byte order).
+- `qunpack` does not try to emulate PHP or full PERL `unpack`.  It does borrow some of
+  their syntax, but favors big-endian values and provides some non-standard extensios.
+
+- `qunpack` supports non-standard extensions like `s<` and `{# ... }` hashes
 
 - the `unpack` format is interpreted like PERL, where `S1L1` means one short followed by
   one long, not a short stored into property named 'L1'.  The PHP syntax would be e.g.
@@ -143,6 +162,14 @@ Differences
 - the `{# ... }` grouping conversion is a `qunpack` extension.  It extracts `count`
   (default 1) objects with properties according to the named formats contained between
   the braces.
+
+- the `s<` etc little-endian conversions are a `qunpack` extension.  The two-character
+  format specifiers `s<`, `l<` and `q<` read signed 16-bit, 32-bit and 64-bit integers
+  from
+
+- 64-bit integer support is limited to 53 bits, since that's the precision available
+  in javascript numbers.  There is no built-in support for assembling quadword longs
+  out of parts.
 
 
 Change Log
