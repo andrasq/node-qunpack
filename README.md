@@ -7,7 +7,7 @@ qunpack
 This implementation is a javascript-only mostly compatible work-alike of PERL and PHP
 [`unpack()`](http://php.net/manual/en/function.unpack.php).
 
-`qunpack` favors big-endian storage; I both signed and unsigned big-endian support,
+`qunpack` favors big-endian storage; I needed both signed and unsigned big-endian support,
 so I store generic "native" ("machine byte order") values in
 network byte order (big-endian).  Later I added full little-endian support as well,
 but the default is still network byte order.
