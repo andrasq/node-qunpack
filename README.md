@@ -167,6 +167,8 @@ Todo
   (ie, 'L2' => [0,0], 'L1' => [0], but 'L' => 0.  However, 'A6' => 'string'
   because '6' is the size, not a count.)
 - speed up `{# ... }` extraction (avoid unused array)
+- fix nested hash extraction
+- fix multiple-subarray extraction
 
 
 Related Work
