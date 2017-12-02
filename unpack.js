@@ -56,7 +56,8 @@ function _qunpack( format, state ) {
         fmt = format[state.fi++];
 
         // two-byte conversion specifiers
-        if (fmt === 'Z') if (format[state.fi] === '+') { fmt = 'Z+'; state.fi++ };
+        if (fmt === 'Z' && format[state.fi] === '+') { fmt = 'Z+'; state.fi++ }
+        else if (format[state.fi] === '<' && (fmt === 'C' || fmt === 'c' || fmt === 's' || fmt === 'l' || fmt === 'i' || fmt === 'q')) { fmt += '<'; state.fi++ }
 
         cnt = getCount(state);
 
@@ -72,6 +73,8 @@ function _qunpack( format, state ) {
 
         case 'v': case 'V': case 'P':                           // little-e ints
         case 'g': case 'e':                                     // little-e float and double
+        case 'c<': case 's<': case 'l<': case 'q<':             // signed little-e ints (extension)
+        case 'C<': case 'i<':
             for (var i=0; i<cnt; i++) {
                 retArray.push(unpackFixedLE(fmt, state));
             }; break;
@@ -81,18 +84,18 @@ function _qunpack( format, state ) {
             retArray.push(unpackString(fmt, state, cnt));
             break;
 
-        case 'Z+':
+        case 'Z+':                                              // var-length asciiz string (extension)
             for (var i=0; i<cnt; i++) {
                 retArray.push(unpackString('az', state, findAsciizLength(state)));
             }; break;
 
-        case 'x': state.ofs += cnt; break;              // skip ahead
-        case 'X': state.ofs -= cnt; break;              // back up
-        case '@': state.ofs = cnt; break;               // seek to absolute
+        case 'x': state.ofs += cnt; break;                      // skip ahead
+        case 'X': state.ofs -= cnt; break;                      // back up
+        case '@': state.ofs = cnt; break;                       // seek to absolute
 
-        case '[':                                       // [# ... ] sub-array
+        case '[':                                               // [# ... ] sub-array (extension)
             unpackSubgroup(retArray, cnt, state); break;
-        case '{':                                       // {# ... } sub-object
+        case '{':                                               // {# ... } sub-object (extension)
             unpackHash(retArray, cnt, state); break;
         case ']': case '}':
             if (state.depth > 1) { state.depth -= 1; return retArray; }; break;
@@ -180,28 +183,23 @@ function unpackFixedBE( format, state ) {
  */
 function unpackFixedLE( format, state ) {
     switch (format) {
-/**
-    case 'C':
+    case 'C<': case 'C':
         return state.buf[state.ofs++];
-    case 'c':
+    case 'c<': case 'c':
         return state.buf[state.ofs] >= 128 ? -256 + state.buf[state.ofs++] : state.buf[state.ofs++];
-**/
-    case 'v':
-    case 'S':
-    case 's':
+    case 's<': case 'v':
+    case 'S': case 's':
         // caution: scale with multiply, not shift, highest-address byte:
         //          (undefined << 8) == 0, (undefined * 256) == NaN, (undefined + 0) == NaN
         var val = (state.buf[state.ofs++]) + (state.buf[state.ofs++] * 256);
-        return (val >= 0x8000 && (format === 's')) ? val - 0x10000 : val;
-    case 'V':
-    case 'L': case 'I':
-    case 'l': case 'i':
+        return (val >= 0x8000 && (format === 's' || format === 's<')) ? val - 0x10000 : val;
+    case 'l<': case 'i<': case 'V':
+    case 'L': case 'I': case 'l': case 'i':
         val = (state.buf[state.ofs++]) + (state.buf[state.ofs++] << 8) + (state.buf[state.ofs++] << 16) + (state.buf[state.ofs++] * 0x1000000);
-        return (val >= 0x80000000 && (format === 'l' || format === 'i')) ? val - 0x100000000 : val;
-    case 'P':
-    case 'Q':
-    case 'q':
-        var fmt = (format === 'q') ? 'i' : 'V';
+        return (val >= 0x80000000 && (format === 'l' || format === 'i' || format === 'l<' || format === 'i<')) ? val - 0x100000000 : val;
+    case 'q<': case 'P':
+    case 'Q': case 'q':
+        var fmt = (format === 'q' || format === 'q<') ? 'i' : 'V';
         return unpackFixedLE('V', state) + (unpackFixedLE(fmt, state) * 0x100000000);
     case 'g':
         return (state.ofs += 4, state.buf.readFloatLE(state.ofs - 4));

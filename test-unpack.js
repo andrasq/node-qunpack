@@ -42,6 +42,7 @@ module.exports = {
                 t.equal(unpack('C', buf, 2), 1);
                 t.equal(unpack('C', buf, 3), 255);
                 t.deepEqual(unpack('C2', buf, 0), [128, 0]);
+                t.deepEqual(unpack('C<2', buf, 0), [128, 0]);
 
                 t.done();
             },
@@ -139,6 +140,7 @@ module.exports = {
                 t.equal(unpack('c', buf, 2), 1);
                 t.equal(unpack('c', buf, 3), -1);
                 t.deepEqual(unpack('c2', buf, 0), [-128, 0]);
+                t.deepEqual(unpack('c<2', buf, 0), [-128, 0]);
 
                 t.done();
             },
@@ -149,12 +151,17 @@ module.exports = {
                 t.equal(unpack('s', buf, 1), 0);
                 t.equal(unpack('s', buf, 2), 128);
                 t.ok(isNaN(unpack('s', buf, 3)));
+                t.ok(isNaN(unpack('s<', buf, 3)));
                 t.deepEqual(unpack('s2', buf, 0), [-0x8000, 128]);
+                t.deepEqual(unpack('s<2', buf, 0), [128, -0x8000]);
 
                 var buf = new Buffer([255,255,1,2]);
                 t.equal(unpack('s', buf, 0), -1);
+                t.equal(unpack('s<', buf, 0), -1);
                 t.equal(unpack('s', buf, 1), -256 + 1);
+                t.equal(unpack('s<', buf, 1), 256 + 255);
                 t.equal(unpack('s', buf, 2), 0x0102);
+                t.equal(unpack('s<', buf, 2), 0x0201);
 
                 t.done();
             },
@@ -163,17 +170,29 @@ module.exports = {
                 var buf = new Buffer([128, 0, 0, 0, 0, 128, 0, 0]);
                 t.equal(unpack('l', buf, 0), -0x80000000);
                 t.equal(unpack('l', buf, 1), 0);
+                t.equal(unpack('l<', buf, 1), 0);
                 t.equal(unpack('l', buf, 2), 128);
+                t.equal(unpack('l<', buf, 2), -0x80000000);
                 t.ok(isNaN(unpack('l', buf, 5)));
+                t.ok(isNaN(unpack('l<', buf, 5)));
                 t.deepEqual(unpack('l2', buf, 0), [-0x80000000, 0x00800000]);
+                t.deepEqual(unpack('l<2', buf, 0), [128, 128 * 256]);
 
-                var buf = new Buffer([255,255,255,255,1,2,3,4]);
+                var buf = new Buffer([255,255,255,255,1,2,3,4,128]);
                 t.equal(unpack('l', buf, 0), -1);
+                t.equal(unpack('l<', buf, 0), -1);
                 t.equal(unpack('l', buf, 1), -256 + 1);
+                t.equal(unpack('l<', buf, 1), 0x01ffffff);
                 t.equal(unpack('l', buf, 2), -256*256 + 0x0102);
+                t.equal(unpack('l<', buf, 2), 0x0201ffff);
                 t.equal(unpack('l', buf, 3), -256*256*256 + 0x010203);
+                t.equal(unpack('l<', buf, 3), 0x030201ff);
                 t.equal(unpack('l', buf, 4), 0x01020304);
-                t.ok(isNaN(unpack('L', buf, 5)));
+                t.equal(unpack('l<', buf, 4), 0x04030201);
+                t.equal(unpack('l<', buf, 5), -128*256*256*256 + 0x040302);
+                t.ok(isNaN(unpack('L', buf, 6)));
+                t.ok(isNaN(unpack('l', buf, 6)));
+                t.ok(isNaN(unpack('l<', buf, 6)));
 
                 t.done();
             },
@@ -181,15 +200,22 @@ module.exports = {
             'q: signed 64-bit quad': function(t) {
                 var buf = new Buffer([128, 0, 0, 0, 0, 0, 0, 0, 0, 128]);
                 t.equal(unpack('q', buf, 0), -0x8000000000000000);
+                t.equal(unpack('q<', buf, 0), 0x0000000000000080);
                 t.equal(unpack('q', buf, 1), 0);
+                t.equal(unpack('q<', buf, 1), 0);
                 t.equal(unpack('q', buf, 2), 128);
+                t.equal(unpack('q<', buf, 2), -0x8000000000000000);
                 t.ok(isNaN(unpack('Q', buf, 3)));
 
-                var buf = new Buffer([255,255,255,255,255,255,255,255,1,2,3,4,5,6,7,8]);
+                var buf = new Buffer([255,255,255,255,255,255,255,255,1,2,3,4,5,6,7,8,128]);
                 t.equal(unpack('q', buf, 0), -1);
+                t.equal(unpack('q<', buf, 0), -1);
                 t.equal(unpack('q', buf, 1), -256 + 1);
+                t.equal(unpack('q<', buf, 1), 0x01ffffffffffffff);
                 t.equal(unpack('q', buf, 6), -0x1000000000000 + 0x010203040506);
                 t.equal(unpack('q', buf, 8), 0x0102030405060708);
+                t.equal(unpack('q<', buf, 9), -128 * 256*256*256*256*256*256*256 + 0x08070605040302);
+                t.ok(isNaN(unpack('q', buf, 10)));
 
                 t.done();
             },
