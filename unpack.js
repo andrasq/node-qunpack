@@ -49,8 +49,9 @@ function _qunpack( format, state ) {
 
     var fmt, name, cnt, ch;
     for ( ; state.fi < format.length; ) {
+        var skip = false;
         // in {#...} hashes the fmt is preceded by name:
-        if (state.hashDepth > 0) name = scanPropertyName(format, state);
+        if (state.hashDepth > 0 && !name) name = scanPropertyName(format, state);
 
         // conversion specifier
         fmt = format[state.fi++];
@@ -99,12 +100,18 @@ function _qunpack( format, state ) {
             unpackHash(retArray, cnt, state); break;
         case ']': case '}':
             if (state.depth > 1) { state.depth -= 1; return retArray; }; break;
+        default:
+            if (fmt >= 'a' && fmt <= 'z' || fmt >= 'A' && fmt <= 'Z') throw new Error("qunpack: unsupported conversion character '" + fmt + "'");
+            // ignore unrecognized punctuation.  TODO: maybe error out on unknown conv specifiers?
+            skip = true;
+            break;
         }
-        if (state.hashDepth > 0) {
+        if (!skip && state.hashDepth > 0) {
             // assign {a:S} as a direct value, but {a:C2} as an array of 2 shorts
             if (retArray.length === 1) retArray[name] = retArray.pop();
             else if (retArray.length) { retArray[name] = retArray.slice(0); retArray.length = 0 }
             // if no value generated for conversion character, do not assign to name
+            name = null;
         }
     }
 
@@ -264,11 +271,11 @@ function scanInt( string, state ) {
 
 // extract the colon-terminated substring starting at state.fi
 function scanPropertyName( format, state ) {
-    var name, cc, hasSlash = false, fi;
+    var name, ch, hasSlash = false, fi;
 
     // advance to the start of the name
     // The name begins with the first char that can start a js varname, [a-zA-Z_$]
-    while (state.fi < format.length && format[state.fi] !== '}' && !canStartVarname(format[state.fi])) {
+    while (state.fi < format.length && (ch = format[state.fi]) !== '}' && ch !== ':' && !canStartVarname(format[state.fi])) {
         if (format[state.fi] === '\\') state.fi++;
         state.fi++;
     }
@@ -278,8 +285,7 @@ function scanPropertyName( format, state ) {
     while (fi < format.length) {
         switch (format[fi++]) {
         case '}':
-// FIXME: breaks multiple-hashes test 
-//            if (fi > state.fi + 1) throwUnterminatedNameError(format, state.fi - 1);
+            if (fi > state.fi + 1) throwUnterminatedNameError(format, state.fi - 1);
             return '';
         case '\\':
             fi++;

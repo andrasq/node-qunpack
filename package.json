@@ -1,6 +1,6 @@
 {
   "name": "qunpack",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "unpack binary strings like perl and php",
   "keywords": [ "unpack", "binary", "php", "perl" ],
   "main": "unpack.js",
@@ -8,7 +8,7 @@
   "repository": "https://github.com/andrasq/node-qunpack",
   "license": "Apache-2.0",
   "devDependencies": {
-    "qnit": "0.18.2"
+    "qnit": "0.19.0"
   },
   "scripts": {
     "test": "qnit test-*",

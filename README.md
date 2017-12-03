@@ -180,6 +180,8 @@ Differences
 Change Log
 ----------
 
+- 0.5.2 - make {#...} hashes more tolerant of odd punctuation and spacing,
+  error out on unrecognized conversion characters
 - 0.5.1 - fix node-v0.10 H,h hex conversion (use integer base,bound)
 - 0.5.0 - full little-endian support, fix 'h' and 'H' string length
 - 0.4.0 - initial version of `{# ... }` grouping, fix H conversion, add h conversion

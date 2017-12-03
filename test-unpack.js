@@ -34,6 +34,13 @@ module.exports = {
             t.done();
         },
 
+        'punctuation should be skipped': function(t) {
+            var buf = new Buffer([1,2,3,4,5,6,7,8,9,10,11,12]);
+            t.deepEqual(unpack('s.c2+:- s-s', buf), [0x0102, 3, 4, 0x0506, 0x0708]);
+            t.deepEqual(unpack('s{ a1 : c2+ ,b2=:=^S }s', buf), [0x0102, { 'a1 ': [ 3, 4 ], 'b2=': 0x0506 }, 0x0708]);
+            t.done();
+        },
+
         'unsigned integers': {
             'C: unsigned 8-bit char': function(t) {
                 var buf = new Buffer([128, 0, 1, 255]);
@@ -413,11 +420,8 @@ module.exports = {
 
             'should throw on unterminatede sub-group': function(t) {
                 var buf = new Buffer([1,2,3,4]);
-                try { unpack('C[C', buf, 0); }
-                catch (err) {
-                    t.contains(err.message, 'unterminated');
-                    t.done()
-                }
+                t.throws(function(){ unpack('C[C', buf) }, /unterminated/);
+                t.done();
             },
 
             'should extract empty sub-array': function(t) {
@@ -485,7 +489,6 @@ module.exports = {
 
             'should extract multiple hashes': function(t) {
                 var buf = new Buffer([1,2,3,4,5,6]);
-// FIXME: throws if upper unterminated name is enabled in scanPropertyName
                 t.deepEqual(unpack('x1, {3 a:C, _:x1 }', buf), [{ a:2 }, { a:4 }, { a:6 }]);
                 t.deepEqual(unpack('{2 a:C, x:X1, b:S}', buf), [ {a:1, b:0x0102}, {a:3, b:0x0304} ]);
                 t.done();
@@ -493,31 +496,32 @@ module.exports = {
 
             'should extract nested hashes': function(t) {
                 var buf = new Buffer([1,2,3,4,5,6]);
-t.skip();
-// FIXME: extracts not 'aa' but empty string '' nested name
                 t.deepEqual(unpack('{ a:C, b:{ +aa: S } }', buf), [{ a:1, b:{ aa: 0x0203 }}]);
                 t.done();
             },
 
             'errors': {
+                'should throw on unrecognized conversion characters': function(t) {
+                    var buf = new Buffer([1,2,3,4]);
+                    t.throws(function(){ unpack('B', buf) }, /unsupported/);
+                    t.throws(function(){ unpack('b', buf) }, /unsupported/);
+                    t.done();
+                },
+
                 'should throw on non-positive hash count': function(t) {
                     var buf = new Buffer([1,2,3,4]);
-                    t.throws(function(){ unpack('{0 a:C}',buf) });
+                    t.throws(function(){ unpack('{0 a:C}',buf) }, /non-zero/);
                     t.done();
                 },
 
                 'should throw if {...} group is not terminated': function(t) {
                     var buf = new Buffer([1,2,3,4]);
-                    try { unpack('{ a:C, ', buf) }
-                    catch (err) {
-                        t.contains(err.message, 'unterminated');
-                        t.done();
-                    }
+                    t.throws(function(){ unpack('{ a:C, ', buf) }, /unterminated/);
+                    t.done();
                 },
 
                 'should throw if field name is not terminated': function(t) {
                     var buf = new Buffer([1,2,3,4]);
-                    t.throws(function(){ unpack('{ a', buf) });
                     try { unpack('{ a', buf) }
                     catch (err) {
                         t.contains(err.message, 'unterminated');
@@ -538,15 +542,8 @@ t.skip();
 
                 'should throw if field name is not followed by a colon': function(t) {
                     var buf = new Buffer([1,2,3,4]);
-t.skip();
-// FIXME: does not throw, extracts { '': '\1' } instead of erroring out
-//console.log("AR: got", unpack('{ a }', buf));
-                    try { var x = unpack('{ a }', buf); }
-                    catch (err) {
-console.log("AR: got err", err);
-                        t.contains(err.message, 'unterminated');
-                        t.done();
-                    }
+                    t.throws(function(){ unpack('{ a }', buf) }, /unterminated/);
+                    t.done();
                 },
             },
         },
