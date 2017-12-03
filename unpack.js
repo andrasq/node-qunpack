@@ -122,7 +122,7 @@ function _qunpack( format, state ) {
 }
 
 // separate function to keep the fi rewind clutter out of the main unpack loop
-function unpackSubgroup( retArray, cnt, state ) {
+function unpackSubgroup( results, cnt, state ) {
     if (!cnt) throw new Error("qunpack: [#...] count must be non-zero");
 
     // gather the subgroup as when outside a hash, to not expect field names
@@ -132,20 +132,20 @@ function unpackSubgroup( retArray, cnt, state ) {
     var subgroupFormatIndex = state.fi;
     for (var i=0; i<cnt; i++) {
         state.fi = subgroupFormatIndex;
-        retArray.push(_qunpack(state.fmt, state));
+        results.push(_qunpack(state.fmt, state));
     }
     state.hashDepth = saveHashDepth;
 }
 
 // separate function to keep the fi rewind clutter out of the main unpack loop
-function unpackHash( retArray, cnt, state ) {
+function unpackHash( results, cnt, state ) {
     if (!cnt) throw new Error("qunpack: {#...} count must be non-zero");
 
     var hashFormatIndex = state.fi;
     state.hashDepth += 1;
     for (var i=0; i<cnt; i++) {
         state.fi = hashFormatIndex;
-        retArray.push(_qunpack(state.fmt, state));
+        results.push(_qunpack(state.fmt, state));
     }
     state.hashDepth -= 1;
 }
